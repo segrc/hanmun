@@ -85,8 +85,8 @@ STDMETHODIMP LangBarButton::GetInfo(TF_LANGBARITEMINFO* info) {
 STDMETHODIMP LangBarButton::GetTooltipString(BSTR* tip) {
     if (!tip) return E_INVALIDARG;
     Mode m = owner_ ? owner_->GetMode() : Mode::English;
-    const wchar_t* s = m == Mode::English ? L"영문 — 한/영 키로 한글" : m == Mode::Hangul ? L"한글 — 한자 키로 한문(漢) 모드"
-                                                                                  : L"한문(漢) — 한자 후보 자동, 한자 키로 한글";
+    const wchar_t* s = m == Mode::English ? L"영문 — 한/영 키로 한글" : m == Mode::Hangul ? L"한글 — 한자 키·오른쪽 Ctrl·여기 클릭으로 한문(漢)"
+                                                                                  : L"한문(漢) — 한자 후보 자동. 한자 키·오른쪽 Ctrl·여기 클릭으로 한글";
     *tip = SysAllocString(s);
     return *tip ? S_OK : E_OUTOFMEMORY;
 }
@@ -106,9 +106,8 @@ STDMETHODIMP LangBarButton::GetIcon(HICON* icon) {
 STDMETHODIMP LangBarButton::OnClick(TfLBIClick click, POINT pt, const RECT*) {
     if (!owner_) return S_OK;
     if (click == TF_LBI_CLK_LEFT) {
-        // 왼쪽 클릭: A → 가 → 漢 → A
-        Mode m = owner_->GetMode();
-        owner_->SetModeFromUser(m == Mode::English ? Mode::Hangul : m == Mode::Hangul ? Mode::Hanmun : Mode::English);
+        // 왼쪽 클릭: 가 ↔ 漢 (모든 앱에 함께 적용)
+        owner_->SetModeFromUser(owner_->GetMode() == Mode::Hanmun ? Mode::Hangul : Mode::Hanmun);
     } else {
         owner_->ShowMenu(pt);
     }

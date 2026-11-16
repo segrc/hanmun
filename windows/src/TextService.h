@@ -79,6 +79,7 @@ private:
     void SetOpen(bool open);
     bool IsOpen();
     void ApplyMode(Mode m);
+    void SyncMode();
     void ResetState();
     void SaveUserLine(const std::wstring& line);
     void ReloadUserIfChanged();
@@ -101,6 +102,7 @@ private:
     std::vector<Candidate> cands_;
     int sel_ = 0;
     bool ignoreOpenChange_ = false;
+    bool rctrlAlone_ = false;
 };
 
 // 엔진은 프로세스마다 한 번만 불러 쓴다

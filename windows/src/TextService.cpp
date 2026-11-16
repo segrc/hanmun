@@ -356,6 +356,8 @@ STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr*, ITfDocumentMgr*) {
     if (Composing() && compCtx_)
         RunEdit(compCtx_, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, [this](TfEditCookie ec) { if (compCtx_) CommitAll(ec, compCtx_); });
     lastChar_.clear();
+    SyncMode();
+    if (button_) button_->Update();
     return S_OK;
 }
 
@@ -426,7 +428,27 @@ TextService::Action TextService::Classify(WPARAM vk) const {
     return a;
 }
 
-STDMETHODIMP TextService::OnTestKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL* eaten) {
+// 한글/한문 구분은 모든 앱이 함께 쓰는 설정이다. 작업 표시줄에서 바꾸면 그 순간 포커스가
+// 작업 표시줄(탐색기)에 있으므로, 각 앱은 키를 받을 때 설정을 다시 읽어 맞춘다.
+void TextService::SyncMode() {
+    if (mode_ == Mode::English) return;
+    Mode k = Settings::KoreanMode();
+    if (k == mode_) return;
+    mode_ = k;
+    Refresh();
+    if (cand_ && cands_.empty()) cand_->Hide();
+    if (button_) button_->Update();
+}
+
+namespace {
+bool IsRightCtrl(WPARAM w, LPARAM l) { return (w == VK_CONTROL || w == VK_RCONTROL) && (l & (1 << 24)); }
+}
+
+STDMETHODIMP TextService::OnTestKeyDown(ITfContext* ctx, WPARAM w, LPARAM l, BOOL* eaten) {
+    // 오른쪽 Ctrl 을 혼자 눌렀다 떼면 한자 키와 같게 (노트북에서 한자 키 = 오른쪽 Ctrl 인 경우)
+    if (IsRightCtrl(w, l)) { if (!(l & (1 << 30))) rctrlAlone_ = true; }
+    else rctrlAlone_ = false;
+    SyncMode();
     *eaten = ctx && Classify(w).act != Act::None;
     return S_OK;
 }
@@ -434,6 +456,7 @@ STDMETHODIMP TextService::OnTestKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL*
 STDMETHODIMP TextService::OnKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL* eaten) {
     *eaten = FALSE;
     if (!ctx) return S_OK;
+    SyncMode();
     Action a = Classify(w);
     if (a.act == Act::None) return S_OK;
     RunEdit(ctx, TF_ES_SYNC | TF_ES_READWRITE, [this, ctx, a](TfEditCookie ec) { Execute(ec, ctx, a); });
@@ -441,12 +464,20 @@ STDMETHODIMP TextService::OnKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL* eat
     return S_OK;
 }
 
-STDMETHODIMP TextService::OnTestKeyUp(ITfContext*, WPARAM w, LPARAM, BOOL* eaten) {
-    *eaten = w == VK_HANGUL || w == VK_HANJA;
+STDMETHODIMP TextService::OnTestKeyUp(ITfContext* ctx, WPARAM w, LPARAM l, BOOL* eaten) {
+    // 오른쪽 Ctrl 떼기는 앱에도 그대로 보낸다 (OnKeyUp 에서 eaten = FALSE)
+    *eaten = w == VK_HANGUL || w == VK_HANJA || (ctx && IsRightCtrl(w, l) && rctrlAlone_);
     return S_OK;
 }
-STDMETHODIMP TextService::OnKeyUp(ITfContext*, WPARAM w, LPARAM, BOOL* eaten) {
+
+STDMETHODIMP TextService::OnKeyUp(ITfContext* ctx, WPARAM w, LPARAM l, BOOL* eaten) {
     *eaten = w == VK_HANGUL || w == VK_HANJA;
+    if (ctx && IsRightCtrl(w, l) && rctrlAlone_) {
+        rctrlAlone_ = false;
+        Action a;
+        a.act = Act::ToggleHanja;
+        RunEdit(ctx, TF_ES_SYNC | TF_ES_READWRITE, [this, ctx, a](TfEditCookie ec) { Execute(ec, ctx, a); });
+    }
     return S_OK;
 }
 
@@ -739,7 +770,7 @@ void TextService::ShowMenu(POINT pt) {
         case 40:
             MessageBoxW(nullptr,
                         L"빠른 한문 입력기 v" HANMUN_VERSION L"\n제작자: 세 (@segrc_)\n\n"
-                        L"한글 상태에서 한자 키를 누르면 한문(漢) 모드가 됩니다.\n"
+                        L"한자 키나 오른쪽 Ctrl(혼자 눌렀다 떼기), 작업 표시줄 클릭으로\n한글(가) ↔ 한문(漢)을 바꿉니다.\n"
                         L"독음을 치면 후보가 뜨고, Space로 이동, Enter·숫자로 고릅니다.\n"
                         L"Esc는 한글 그대로 확정합니다.\n\n"
                         L"웹 버전: https://hanmun.j-segrc.workers.dev",
