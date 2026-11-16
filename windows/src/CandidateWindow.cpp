@@ -77,16 +77,16 @@ void CandidateWindow::MakeFonts(UINT dpi) {
         return CreateFontW(-Scale(px, dpi), 0, 0, 0, weight, 0, 0, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
                            CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Malgun Gothic");
     };
-    fMain_ = mk(19, FW_NORMAL);
-    fSmall_ = mk(12, FW_NORMAL);
+    fMain_ = mk(16, FW_NORMAL);
+    fSmall_ = mk(11, FW_NORMAL);
 }
 
 SIZE CandidateWindow::Measure() {
     HDC dc = GetDC(hwnd_);
-    pad_ = Scale(5, dpi_);
-    gap_ = Scale(10, dpi_);
+    pad_ = Scale(4, dpi_);
+    gap_ = Scale(8, dpi_);
     SIZE m = TextSize(dc, fMain_, L"漢가");
-    rowH_ = m.cy + Scale(7, dpi_);
+    rowH_ = m.cy + Scale(5, dpi_);
     numW_ = TextSize(dc, fSmall_, L"9").cx;
     textW_ = extraW_ = 0;
     for (auto& c : items_) {
@@ -94,11 +94,11 @@ SIZE CandidateWindow::Measure() {
         std::wstring e = Extra(c);
         if (!e.empty()) extraW_ = std::max<int>(extraW_, TextSize(dc, fSmall_, e).cx);
     }
-    extraW_ = std::min<int>(extraW_, Scale(220, dpi_));
+    extraW_ = std::min<int>(extraW_, Scale(190, dpi_));
     footH_ = pages_ > 1 ? TextSize(dc, fSmall_, L"1/2").cy + Scale(4, dpi_) : 0;
     ReleaseDC(hwnd_, dc);
-    int w = pad_ * 2 + Scale(8, dpi_) + numW_ + gap_ + textW_ + (extraW_ ? gap_ + extraW_ : 0) + Scale(10, dpi_);
-    w = std::max<int>(w, Scale(120, dpi_));
+    int w = pad_ * 2 + Scale(6, dpi_) + numW_ + gap_ + textW_ + (extraW_ ? gap_ + extraW_ : 0) + Scale(10, dpi_);
+    w = std::max<int>(w, Scale(100, dpi_));
     int h = pad_ * 2 + rowH_ * (int)items_.size() + footH_;
     return {w, h};
 }
@@ -121,7 +121,7 @@ void CandidateWindow::Show(const RECT& anchor, const std::vector<Candidate>& can
     MONITORINFO mi = {sizeof(mi)};
     GetMonitorInfoW(mon, &mi);
     const RECT& wa = mi.rcWork;
-    int x = anchor.left - pad_ - Scale(8, dpi_) - numW_ - gap_ / 2, y = anchor.bottom + Scale(3, dpi_);
+    int x = anchor.left - pad_ - Scale(6, dpi_) - numW_ - gap_ / 2, y = anchor.bottom + Scale(3, dpi_);
     if (y + sz.cy > wa.bottom) y = anchor.top - sz.cy - Scale(3, dpi_);   // 아래 자리가 없으면 위로
     x = std::max<int>(wa.left, std::min<int>(x, wa.right - sz.cx));
     y = std::max<int>(wa.top, y);
@@ -152,13 +152,13 @@ void CandidateWindow::Paint(HDC dc) {
             HBRUSH b = CreateSolidBrush(kAccent);
             HPEN p = CreatePen(PS_SOLID, 1, kAccent);
             HGDIOBJ ob = SelectObject(dc, b), op = SelectObject(dc, p);
-            RoundRect(dc, row.left, row.top, row.right, row.bottom, Scale(8, dpi_), Scale(8, dpi_));
+            RoundRect(dc, row.left, row.top, row.right, row.bottom, Scale(6, dpi_), Scale(6, dpi_));
             SelectObject(dc, ob);
             SelectObject(dc, op);
             DeleteObject(b);
             DeleteObject(p);
         }
-        int x = row.left + Scale(8, dpi_);
+        int x = row.left + Scale(6, dpi_);
         // 번호
         SelectObject(dc, fSmall_);
         SetTextColor(dc, on ? kAccentText : kDim);

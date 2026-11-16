@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key><string>ko</string>
+	<key>CFBundleExecutable</key><string>Hanmun</string>
+	<key>CFBundleIdentifier</key><string>com.segrc.inputmethod.Hanmun</string>
+	<key>CFBundleName</key><string>Hanmun</string>
+	<key>CFBundleDisplayName</key><string>빠른 한문 입력기</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>@VERSION@</string>
+	<key>CFBundleVersion</key><string>@VERSION@</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>12.0</string>
+	<key>LSBackgroundOnly</key><true/>
+	<key>LSUIElement</key><true/>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSHumanReadableCopyright</key><string>Copyright (c) 2026 세 (@segrc_) — MIT License</string>
+	<key>InputMethodConnectionName</key><string>com.segrc.inputmethod.Hanmun_Connection</string>
+	<key>InputMethodServerControllerClass</key><string>HanmunController</string>
+	<key>TISInputSourceID</key><string>com.segrc.inputmethod.Hanmun</string>
+	<key>TISIntendedLanguage</key><string>ko</string>
+	<key>tsInputMethodCharacterRepertoireKey</key>
+	<array><string>Hang</string><string>Hani</string></array>
+	<key>tsInputMethodIconFileKey</key><string>hanmun.tiff</string>
+	<key>ComponentInputModeDict</key>
+	<dict>
+		<key>tsInputModeDefaultInputModeKey</key><string>com.segrc.inputmethod.Hanmun.hangul</string>
+		<key>tsVisibleInputModeOrderedArrayKey</key>
+		<array>
+			<string>com.segrc.inputmethod.Hanmun.hangul</string>
+			<string>com.segrc.inputmethod.Hanmun.hanmun</string>
+		</array>
+		<key>tsInputModeListKey</key>
+		<dict>
+			<key>com.segrc.inputmethod.Hanmun.hangul</key>
+			<dict>
+				<key>TISInputSourceID</key><string>com.segrc.inputmethod.Hanmun.hangul</string>
+				<key>TISIntendedLanguage</key><string>ko</string>
+				<key>TISIconIsTemplate</key><true/>
+				<key>tsInputModeScriptKey</key><string>smKorean</string>
+				<key>tsInputModeIsVisibleKey</key><true/>
+				<key>tsInputModePrimaryInScriptKey</key><true/>
+				<key>tsInputModeCharacterRepertoireKey</key><array><string>Hang</string></array>
+				<key>tsInputModeMenuIconFileKey</key><string>hangul.tiff</string>
+				<key>tsInputModeAlternateMenuIconFileKey</key><string>hangul.tiff</string>
+				<key>tsInputModePaletteIconFileKey</key><string>hangul.tiff</string>
+			</dict>
+			<key>com.segrc.inputmethod.Hanmun.hanmun</key>
+			<dict>
+				<key>TISInputSourceID</key><string>com.segrc.inputmethod.Hanmun.hanmun</string>
+				<key>TISIntendedLanguage</key><string>ko</string>
+				<key>TISIconIsTemplate</key><true/>
+				<key>tsInputModeScriptKey</key><string>smKorean</string>
+				<key>tsInputModeIsVisibleKey</key><true/>
+				<key>tsInputModePrimaryInScriptKey</key><false/>
+				<key>tsInputModeCharacterRepertoireKey</key><array><string>Hang</string><string>Hani</string></array>
+				<key>tsInputModeMenuIconFileKey</key><string>hanmun.tiff</string>
+				<key>tsInputModeAlternateMenuIconFileKey</key><string>hanmun.tiff</string>
+				<key>tsInputModePaletteIconFileKey</key><string>hanmun.tiff</string>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>
