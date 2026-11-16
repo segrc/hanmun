@@ -426,7 +426,17 @@ TextService::Action TextService::Classify(WPARAM vk) const {
     if (vk == VK_BACK) a.act = Act::Back;
     else if (vk == VK_ESCAPE) a.act = Act::CommitEat;
     else if (vk == VK_RETURN) a.act = mode_ == Mode::Hanmun ? Act::CommitEat : Act::CommitPass;
-    else a.act = Act::CommitPass;
+    else {
+        // 글자가 나오는 키(문장부호·숫자·띄어쓰기)는 조합을 확정하면서 그 글자도 직접 넣는다.
+        // (키를 앱에 넘기면 크롬·Claude 앱 등에서 그 글자가 빠지는 일이 있다)
+        BYTE ks[256];
+        wchar_t buf[8] = {};
+        if (GetKeyboardState(ks)) {
+            int n = ToUnicode((UINT)vk, MapVirtualKeyW((UINT)vk, MAPVK_VK_TO_VSC), ks, buf, 8, 4 /* 키보드 상태 유지 */);
+            if (n == 1 && buf[0] >= 0x20 && buf[0] != 0x7F) { a.act = Act::CommitChar; a.ch = buf[0]; return a; }
+        }
+        a.act = Act::CommitPass;
+    }
     return a;
 }
 
@@ -443,6 +453,7 @@ void TextService::SyncMode() {
 }
 
 namespace {
+const ULONG_PTR kResent = 0x484D4E31;   // 'HMN1': 입력기가 다시 보낸 키 표시
 bool IsRightCtrl(WPARAM w, LPARAM l) { return (w == VK_CONTROL || w == VK_RCONTROL) && (l & (1 << 24)); }
 }
 
@@ -451,6 +462,7 @@ STDMETHODIMP TextService::OnTestKeyDown(ITfContext* ctx, WPARAM w, LPARAM l, BOO
     if (IsRightCtrl(w, l)) { if (!(l & (1 << 30))) rctrlAlone_ = true; }
     else rctrlAlone_ = false;
     SyncMode();
+    if (GetMessageExtraInfo() == (LPARAM)kResent) { *eaten = FALSE; return S_OK; }   // 확정 뒤 다시 보낸 키
     *eaten = ctx && Classify(w).act != Act::None;
     return S_OK;
 }
@@ -459,11 +471,30 @@ STDMETHODIMP TextService::OnKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL* eat
     *eaten = FALSE;
     if (!ctx) return S_OK;
     SyncMode();
+    if (GetMessageExtraInfo() == (LPARAM)kResent) return S_OK;
     Action a = Classify(w);
     if (a.act == Act::None) return S_OK;
     RunEdit(ctx, TF_ES_SYNC | TF_ES_READWRITE, [this, ctx, a](TfEditCookie ec) { Execute(ec, ctx, a); });
-    *eaten = a.act != Act::CommitPass;
+    *eaten = TRUE;
+    // Enter·방향키·Alt+Enter 같은 키: 조합을 확정한 뒤 같은 키를 다시 보낸다.
+    // 확정과 키를 한 번에 넘기면 크롬·Claude 앱 등에서 키가 무시되는 일이 있어서.
+    if (a.act == Act::CommitPass) Resend((UINT)w);
     return S_OK;
+}
+
+void TextService::Resend(UINT vk) {
+    INPUT in[2] = {};
+    for (int i = 0; i < 2; i++) {
+        in[i].type = INPUT_KEYBOARD;
+        in[i].ki.wVk = (WORD)vk;
+        in[i].ki.wScan = (WORD)MapVirtualKeyW(vk, MAPVK_VK_TO_VSC);
+        in[i].ki.dwExtraInfo = kResent;
+        if (vk == VK_LEFT || vk == VK_RIGHT || vk == VK_UP || vk == VK_DOWN || vk == VK_HOME || vk == VK_END ||
+            vk == VK_PRIOR || vk == VK_NEXT || vk == VK_INSERT || vk == VK_DELETE)
+            in[i].ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+    }
+    in[1].ki.dwFlags |= KEYEVENTF_KEYUP;
+    SendInput(2, in, sizeof(INPUT));
 }
 
 STDMETHODIMP TextService::OnTestKeyUp(ITfContext* ctx, WPARAM w, LPARAM l, BOOL* eaten) {
@@ -534,6 +565,17 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
         case Act::Pick: DoPick(ec, ctx, a.index); break;
         case Act::CommitEat:
         case Act::CommitPass: CommitAll(ec, ctx); lastChar_.clear(); break;
+        case Act::CommitChar: {
+            std::wstring commit = PickedText(true) + run_ + hg_.Current() + a.ch;
+            hg_.Reset();
+            run_.clear();
+            picks_.clear();
+            cands_.clear();
+            sel_ = 0;
+            lastChar_.clear();
+            Update(ec, ctx, commit);
+            break;
+        }
     }
 }
 

@@ -63,8 +63,8 @@ public:
     void ShowMenu(POINT pt);
 
 private:
-    enum class Act { None, ToggleHangul, ToggleHanja, Jamo, Back, Next, Prev, PageNext, PagePrev, Pick, CommitEat, CommitPass };
-    struct Action { Act act = Act::None; wchar_t jamo = 0; int index = 0; };
+    enum class Act { None, ToggleHangul, ToggleHanja, Jamo, Back, Next, Prev, PageNext, PagePrev, Pick, CommitEat, CommitPass, CommitChar };
+    struct Action { Act act = Act::None; wchar_t jamo = 0; int index = 0; wchar_t ch = 0; };
 
     Action Classify(WPARAM vk) const;
     bool Composing() const { return !hg_.Empty() || !run_.empty() || !picks_.empty(); }
@@ -80,6 +80,7 @@ private:
     bool IsOpen();
     void ApplyMode(Mode m);
     void SyncMode();
+    void Resend(UINT vk);
     void ResetState();
     void SaveUserLine(const std::wstring& line);
     void ReloadUserIfChanged();

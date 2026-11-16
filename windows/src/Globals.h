@@ -16,7 +16,7 @@
 #include <msctf.h>
 #include <string>
 
-#define HANMUN_VERSION L"0.1.4"
+#define HANMUN_VERSION L"0.1.5"
 
 extern HINSTANCE g_hInst;
 extern LONG g_cRefDll;
