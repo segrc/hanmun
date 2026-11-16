@@ -373,6 +373,7 @@ STDMETHODIMP TextService::OnCompositionTerminated(TfEditCookie, ITfComposition* 
 }
 
 void TextService::ResetState() {
+    emitted_.clear();
     hg_.Reset();
     run_.clear();
     picks_.clear();
@@ -423,7 +424,7 @@ TextService::Action TextService::Classify(WPARAM vk) const {
         }
     }
     if (!comp) return a;
-    if (vk == VK_BACK) a.act = Act::Back;
+    if (vk == VK_BACK) a.act = (trans_ && hg_.Empty()) ? Act::CommitPass : Act::Back;
     else if (vk == VK_ESCAPE) a.act = Act::CommitEat;
     else if (vk == VK_RETURN) a.act = mode_ == Mode::Hanmun ? Act::CommitEat : Act::CommitPass;
     else {
@@ -529,8 +530,21 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
             break;
         case Act::Jamo: {
             if (!a.jamo) break;
+            if (!Composing()) { trans_ = mode_ == Mode::Hanmun && IsTransitory(ctx); emitted_.clear(); }
             std::wstring out = hg_.Feed(a.jamo), commit;
-            if (mode_ == Mode::Hanmun) {
+            if (mode_ == Mode::Hanmun && trans_) {
+                if (!out.empty()) {
+                    commit = out;
+                    if (Hangul::IsSyllable(out[0])) { run_ += out; emitted_ += out; }
+                    else { run_.clear(); picks_.clear(); emitted_.clear(); }
+                }
+                if (picks_.empty() && run_.size() > 16) {
+                    size_t d = run_.size() - 16;
+                    run_.erase(0, d);
+                    emitted_.erase(0, d);
+                }
+                Refresh();
+            } else if (mode_ == Mode::Hanmun) {
                 if (!out.empty()) {
                     if (Hangul::IsSyllable(out[0])) run_ += out;
                     else { commit = PickedText(true) + run_ + out; run_.clear(); picks_.clear(); }   // 낱자모는 그대로 내보낸다
@@ -566,7 +580,8 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
         case Act::CommitEat:
         case Act::CommitPass: CommitAll(ec, ctx); lastChar_.clear(); break;
         case Act::CommitChar: {
-            std::wstring commit = PickedText(true) + run_ + hg_.Current() + a.ch;
+            std::wstring commit = (trans_ ? L"" : PickedText(true) + run_) + hg_.Current() + a.ch;
+            emitted_.clear();
             hg_.Reset();
             run_.clear();
             picks_.clear();
@@ -579,8 +594,70 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
     }
 }
 
+bool TextService::IsTransitory(ITfContext* ctx) {
+    TF_STATUS st = {};
+    return ctx && SUCCEEDED(ctx->GetStatus(&st)) && (st.dwStaticFlags & TF_SS_TRANSITORY);
+}
+
+// 이미 앱에 넣은 글자를 지우고(Backspace) 새 글자를 쳐 넣는다
+void TextService::Retype(size_t backspaces, const std::wstring& text) {
+    std::vector<INPUT> in;
+    auto key = [&](WORD vk, WORD scan, DWORD flags) {
+        INPUT i = {};
+        i.type = INPUT_KEYBOARD;
+        i.ki.wVk = vk;
+        i.ki.wScan = scan;
+        i.ki.dwFlags = flags;
+        i.ki.dwExtraInfo = kResent;
+        in.push_back(i);
+    };
+    WORD bs = (WORD)MapVirtualKeyW(VK_BACK, MAPVK_VK_TO_VSC);
+    for (size_t k = 0; k < backspaces; k++) { key(VK_BACK, bs, 0); key(VK_BACK, bs, KEYEVENTF_KEYUP); }
+    for (wchar_t c : text) { key(0, c, KEYEVENTF_UNICODE); key(0, c, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP); }
+    if (!in.empty()) SendInput((UINT)in.size(), in.data(), sizeof(INPUT));
+}
+
+void TextService::DoPickTransitory(TfEditCookie ec, ITfContext* ctx, int index) {
+    std::wstring flushed;
+    if (hg_.IsFullSyllable()) { flushed = hg_.Flush(); run_ += flushed; }
+    else hg_.Reset();   // 낱자모는 버린다
+    Candidate c = cands_[index];
+    if (c.len <= 0 || c.len > (int)run_.size()) { Refresh(); Update(ec, ctx, L""); return; }
+    picks_.push_back({c.read, c.text});
+    run_.erase(0, c.len);
+    Engine& e = SharedEngine();
+    {
+        std::lock_guard<std::mutex> lock(g_engineLock);
+        SaveUserLine(e.Learn(c.read, c.text));
+    }
+    auto chars = Engine::Chars(c.text);
+    if (!chars.empty()) lastChar_ = chars.back();
+
+    cands_.clear();
+    Update(ec, ctx, L"");   // 조합 중이던 글자를 지운다 (아래에서 다시 쳐 넣음)
+    std::wstring now = PickedText(true) + run_;
+    Retype(Engine::Chars(emitted_).size(), now);
+    emitted_ = now;
+    if (run_.empty()) {
+        if (picks_.size() >= 2) {
+            std::wstring R, Z;
+            for (auto& p : picks_) { R += p.first; Z += p.second; }
+            size_t zc = Engine::Chars(Z).size();
+            if (zc >= 2 && zc <= 8) {
+                std::lock_guard<std::mutex> lock(g_engineLock);
+                SaveUserLine(e.AddWord(R, Z));
+            }
+        }
+        picks_.clear();
+        emitted_.clear();
+    }
+    Refresh();
+    ShowCandidates(ec, ctx);
+}
+
 void TextService::DoPick(TfEditCookie ec, ITfContext* ctx, int index) {
     if (index < 0 || index >= (int)cands_.size()) return;
+    if (trans_) { DoPickTransitory(ec, ctx, index); return; }
     if (hg_.IsFullSyllable()) run_ += hg_.Flush();
     Candidate c = cands_[index];
     if (c.len <= 0 || c.len > (int)run_.size()) return;
@@ -613,7 +690,8 @@ void TextService::DoPick(TfEditCookie ec, ITfContext* ctx, int index) {
 }
 
 void TextService::CommitAll(TfEditCookie ec, ITfContext* ctx) {
-    std::wstring commit = PickedText(true) + run_ + hg_.Current();
+    std::wstring commit = (trans_ ? L"" : PickedText(true) + run_) + hg_.Current();
+    emitted_.clear();
     hg_.Reset();
     run_.clear();
     picks_.clear();
@@ -649,7 +727,7 @@ void TextService::Refresh() {
 // ─────────────────────────────────────────── 조합 문자열 갱신
 
 void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& commit) {
-    const std::wstring compText = PickedText(false) + run_ + hg_.Current();
+    const std::wstring compText = trans_ ? hg_.Current() : PickedText(false) + run_ + hg_.Current();
     if (!comp_ && commit.empty() && compText.empty()) { if (cand_) cand_->Hide(); return; }
 
     if (!comp_) {
@@ -742,18 +820,20 @@ void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& c
 
 void TextService::ShowCandidates(TfEditCookie ec, ITfContext* ctx) {
     if (!cand_) return;
-    if (cands_.empty() || !comp_) { cand_->Hide(); return; }
+    if (cands_.empty() || (!comp_ && !trans_)) { cand_->Hide(); return; }
     RECT rc = {}, box = {};
     bool ok = false;
     ITfContextView* view = nullptr;
     ITfRange* r = nullptr;
-    if (SUCCEEDED(ctx->GetActiveView(&view)) && SUCCEEDED(comp_->GetRange(&r))) {
+    if (comp_ && SUCCEEDED(ctx->GetActiveView(&view)) && SUCCEEDED(comp_->GetRange(&r))) {
         BOOL clipped = FALSE;
         ok = view->GetTextExt(ec, r, &rc, &clipped) == S_OK && (rc.bottom > rc.top || rc.right > rc.left);
         if (view->GetScreenExt(&box) != S_OK) box = {};
     }
     SafeRelease(r);
     SafeRelease(view);
+    if (ok) { lastRc_ = rc; lastBox_ = box; }
+    else if (trans_ && (lastRc_.bottom > lastRc_.top)) { rc = lastRc_; box = lastBox_; ok = true; }   // 조합이 잠깐 없을 때는 직전 위치
     if (!ok) {   // 위치를 못 알려 주는 앱: 캐럿 위치로
         GUITHREADINFO gi = {sizeof(gi)};
         if (GetGUIThreadInfo(GetCurrentThreadId(), &gi) && gi.hwndCaret) {

@@ -70,6 +70,7 @@ private:
     bool Composing() const { return !hg_.Empty() || !run_.empty() || !picks_.empty(); }
     void Execute(TfEditCookie ec, ITfContext* ctx, const Action& a);
     void DoPick(TfEditCookie ec, ITfContext* ctx, int index);
+    void DoPickTransitory(TfEditCookie ec, ITfContext* ctx, int index);
     void CommitAll(TfEditCookie ec, ITfContext* ctx);
     void Refresh();
     std::wstring PickedText(bool formatted) const;
@@ -81,6 +82,8 @@ private:
     void ApplyMode(Mode m);
     void SyncMode();
     void Resend(UINT vk);
+    void Retype(size_t backspaces, const std::wstring& text);
+    static bool IsTransitory(ITfContext* ctx);
     void ResetState();
     void SaveUserLine(const std::wstring& line);
     void ReloadUserIfChanged();
@@ -104,6 +107,11 @@ private:
     int sel_ = 0;
     bool ignoreOpenChange_ = false;
     bool rctrlAlone_ = false;
+    // 옛 방식(IMM) 앱(카카오톡 등)은 여러 글자 조합을 못 받으므로, 한문 모드에서도 한 글자씩 확정하고
+    // 후보를 고르면 이미 넣은 한글을 지우고 다시 쳐 넣는다
+    bool trans_ = false;
+    std::wstring emitted_;
+    RECT lastRc_ = {}, lastBox_ = {};   // 그렇게 앱에 이미 넣은 이번 묶음의 글자
 };
 
 // 엔진은 프로세스마다 한 번만 불러 쓴다
