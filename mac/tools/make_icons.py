@@ -22,7 +22,8 @@ for s in (16, 32, 128, 256, 512):
 FONT = '/System/Library/Fonts/AppleSDGothicNeo.ttc'
 def glyph(ch, S):
     im = Image.new('RGBA', (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
-    f = ImageFont.truetype(FONT, int(S * 0.86), index=6 if os.path.exists(FONT) else 0)   # Bold
+    try: f = ImageFont.truetype(FONT, int(S * 0.86), index=6)   # Bold
+    except Exception: f = ImageFont.truetype(FONT, int(S * 0.86))
     l, t, r, b = d.textbbox((0, 0), ch, font=f)
     d.text(((S - (r - l)) / 2 - l, (S - (b - t)) / 2 - t), ch, font=f, fill=(0, 0, 0, 255))
     return im
