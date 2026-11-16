@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>빠른 한문 입력기</title>
+<meta name="description" content="한글로 음을 치면 한자 후보가 바로 뜨는 한문 입력기. 논어·맹자, 조선왕조실록·승정원일기 어구, 이두까지.">
+<meta property="og:title" content="빠른 한문 입력기">
+<meta property="og:description" content="한글로 음을 치면 한자 후보가 바로 뜨는 한문 입력기">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314c4b8'/%3E%3Crect x='10' y='19' width='44' height='27' rx='5' fill='none' stroke='%23fff' stroke-width='3.5'/%3E%3Cg fill='%23fff'%3E%3Crect x='16' y='25' width='4.2' height='4.2' rx='1.1'/%3E%3Crect x='22.6' y='25' width='4.2' height='4.2' rx='1.1'/%3E%3Crect x='29.2' y='25' width='4.2' height='4.2' rx='1.1'/%3E%3Crect x='35.8' y='25' width='4.2' height='4.2' rx='1.1'/%3E%3Crect x='42.4' y='25' width='4.2' height='4.2' rx='1.1'/%3E%3Crect x='21' y='36' width='22' height='4' rx='2'/%3E%3C/g%3E%3C/svg%3E">
+<style>
+/* VOICE: 조용한 작업 도구 — 글 쓰는 책상
+   IDEA: 붓글씨 원고 위에 찍는 낙관(인주 도장): 고른 한자가 도장처럼 찍힌다
+   PICTURE: 편집기 자체 + 커서 아래 뜨는 후보 띠
+   COLOUR and TYPE: 흰 종이, 먹색 글자, 인주 빨강 하나 / Pretendard
+   LAYOUT: 제목 → 편집기(넓게) + 오른쪽 사전 패널, 좁으면 세로로 */
+@font-face{font-family:'Pretendard';font-weight:400;font-display:swap;src:url('fonts/Pretendard-Regular.subset.woff2') format('woff2')}
+@font-face{font-family:'Pretendard';font-weight:500;font-display:swap;src:url('fonts/Pretendard-Medium.subset.woff2') format('woff2')}
+@font-face{font-family:'Pretendard';font-weight:600;font-display:swap;src:url('fonts/Pretendard-SemiBold.subset.woff2') format('woff2')}
+@font-face{font-family:'Pretendard';font-weight:800;font-display:swap;src:url('fonts/Pretendard-ExtraBold.subset.woff2') format('woff2')}
+@font-face{font-family:'Pretendard JP';font-weight:45 920;font-display:swap;src:url('fonts/PretendardJPVariable.woff2') format('woff2-variations'),url('fonts/PretendardJPVariable.woff2') format('woff2');unicode-range:U+2E80-2FDF,U+3000-303F,U+3190-319F,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+20000-2FA1F}
+:root{--font:"Pretendard","Pretendard JP","Malgun Gothic","Apple SD Gothic Neo","Microsoft JhengHei","Microsoft YaHei","PingFang TC","MingLiU-ExtB","SimSun-ExtB",sans-serif;color-scheme:light dark;
+--bg:light-dark(#ffffff,#121212);--paper:light-dark(#ffffff,#1a1a1a);--ink:light-dark(#191919,#ece9e4);
+--mute:light-dark(#6b6b6b,#a19d97);--line:light-dark(#e3e1dd,#2f2d2b);--soft:light-dark(#f4f3f0,#222120);
+--seal:light-dark(#b3261e,#ef6a5f);--sealbg:light-dark(#fbeceb,#3a1d1b);--pop:light-dark(#ffffff,#232221)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 var(--font);overflow-x:clip}
+.wrap{max-width:1180px;margin:0 auto;padding:clamp(20px,3.5vw,44px) max(4vw,16px) 48px}
+h1{font:800 clamp(30px,4.4vw,46px)/1.15 var(--font);letter-spacing:-0.025em;margin:0;text-wrap:balance}
+.hd{position:relative;display:flex;align-items:center;gap:12px;margin:0 0 25px}
+.help{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line);background:var(--paper);color:var(--mute);font:600 15px var(--font);cursor:pointer;flex:none}
+.help:hover,.help[aria-expanded=true]{color:var(--ink);border-color:var(--ink)}
+.helpbox{position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:min(420px,100%);background:var(--pop);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.16);padding:16px 18px;font-size:14px;color:var(--ink);animation:up .12s ease-out}
+.helpbox[hidden]{display:none}
+.helpbox b{font-weight:600;font-size:15px}
+.helpbox ul{margin:8px 0 0;padding-left:18px;line-height:2;color:var(--mute)}
+.keys{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 18px;padding:0;list-style:none;font-size:14px;color:var(--mute)}
+kbd{font:500 13px var(--font);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--soft);color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.ed{position:relative;border:1px solid var(--line);border-radius:12px;background:var(--paper);box-shadow:0 1px 0 var(--line)}
+textarea#ta{display:block;width:100%;min-height:clamp(300px,52vh,560px);resize:vertical;border:0;outline:0;background:transparent;color:var(--ink);
+ font:20px/1.8 var(--font);padding:22px 24px;border-radius:12px;white-space:pre-wrap;word-wrap:break-word}
+.ed:focus-within{border-color:var(--ink)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px;color:var(--mute)}
+.bar .sp{flex:1}
+.btn.ic{width:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;color:var(--mute)}.btn.ic:hover{color:var(--ink)}
+.hist{position:relative}
+.hlist{position:absolute;bottom:calc(100% + 8px);left:0;z-index:20;width:min(340px,80vw);max-height:300px;overflow:auto;background:var(--pop);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.16);padding:6px}
+.hlist[hidden]{display:none}
+.hlist button{display:block;width:100%;text-align:left;border:0;background:transparent;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;color:var(--ink)}
+.hlist button:hover{background:var(--soft)}
+.hlist small{display:block;color:var(--mute);font-size:12px}
+.hlist .empty{padding:8px 10px}
+.bar.top{border-top:0;border-bottom:1px solid var(--line);padding:6px 8px;gap:6px}
+.bar.top .seg button,.bar.top .tg,.bar.top .fs button{min-height:32px}.bar.top .tg{padding:0 8px;font-size:13px}.bar.top .seg button{padding:0 9px;font-size:13px}.bar.top .fs button{min-width:34px;font-size:12px}.bar.top .tg input{width:16px;height:16px}
+.ed.vert textarea#ta{writing-mode:vertical-rl;height:clamp(320px,56vh,620px);min-height:0;resize:none;overflow-x:auto;overflow-y:hidden;padding:24px 28px}
+button,select,input{font:inherit;color:var(--ink)}
+.btn{min-height:40px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--paper);cursor:pointer;font-size:15px}
+.btn:hover{background:var(--soft)}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--seal);outline-offset:2px}
+.tg{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--ink);font-size:14px}.tg input{width:18px;height:18px;accent-color:var(--seal);margin:0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{min-height:40px;border:0;background:transparent;padding:0 10px;cursor:pointer;font-size:14px}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+/* 후보 띠 */
+#cand{position:absolute;z-index:5;min-width:240px;max-width:min(400px,calc(100% - 16px));background:var(--pop);border:1px solid var(--line);
+ border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.14);padding:6px;display:none}
+#cand.on{display:block;animation:up .12s ease-out}
+@keyframes up{from{opacity:0;transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){#cand.on{animation:none}}
+#cand.dock{position:static;max-width:none;box-shadow:none;border:0;border-top:1px solid var(--line);border-radius:0}
+.cl{display:flex;flex-direction:column;gap:1px}
+.c{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:3px 12px 3px 8px;border:0;border-radius:7px;background:transparent;cursor:pointer;text-align:left}
+.c small:first-of-type{margin-left:auto}
+.c:hover{background:var(--soft)}.c.sel{background:var(--sealbg);box-shadow:inset 3px 0 0 var(--seal)}
+.c i{width:14px;text-align:right;font:500 12px var(--font);font-style:normal;color:var(--mute);min-width:12px}
+.c b{font:400 24px/1.2 var(--font);color:var(--ink);white-space:nowrap}
+.c.sel b{color:var(--seal)}
+.c small{font-size:12px;color:var(--mute);max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.c em{font-style:normal;font-size:11px;color:var(--seal)}.c u{text-decoration:none;font-size:11px;color:var(--mute);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.cf{display:flex;align-items:center;gap:6px;padding:4px 4px 0;font-size:12.5px;color:var(--mute);border-top:1px solid var(--line);margin-top:4px}
+.cf .sp{flex:1}
+.cf button{min-width:36px;min-height:32px;border:1px solid var(--line);border-radius:6px;background:transparent;cursor:pointer}
+.cf .rd{font:600 14px var(--font);color:var(--ink)}
+/* 패널 */
+aside{display:grid;gap:18px}
+.pn{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--paper)}
+.pn h2{font:600 17px/1.3 var(--font);margin:0 0 4px}
+.fs{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fs button{min-height:40px;min-width:40px;border:0;background:transparent;cursor:pointer;font-size:13px;color:var(--ink)}.fs button:hover{background:var(--soft)}
+.fs span{min-width:28px;text-align:center;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+aside{position:relative}
+.grid{position:relative}
+.sidet{position:absolute;top:120px;transform:translateY(-50%);right:calc(320px + 1px);width:22px;height:88px;padding:0;font-weight:600;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--mute);cursor:pointer;font-size:16px;line-height:1;z-index:2}
+.sidet:hover{color:var(--ink)}
+.grid.closed{grid-template-columns:minmax(0,1fr);padding-right:30px}
+.grid.closed aside{display:none}
+.grid.closed .sidet{right:0}
+@media(max-width:900px){.sidet{position:static;transform:none;width:auto;height:36px;padding:0 12px;justify-self:end;font-size:13px}.grid.closed{grid-template-columns:minmax(0,1fr);padding-right:0}}
+.pnh{display:flex;align-items:center;justify-content:space-between;gap:8px}.pnh h2{margin:0}
+.rst{min-height:32px;padding:0 10px;border:1px solid var(--line);border-radius:7px;background:transparent;color:var(--mute);font-size:13px;cursor:pointer}.rst:hover{color:var(--seal);border-color:var(--seal)}.rst.arm{color:#fff;background:var(--seal);border-color:var(--seal)}
+.wl{list-style:none;margin:10px 0 0;padding:0;max-height:220px;overflow:auto;font-size:15px}
+.wl li{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)}
+.wl li span{flex:1}.wl li b{font:400 18px var(--font)}
+.wl li button{min-width:36px;min-height:36px;border:0;background:transparent;color:var(--mute);cursor:pointer;font-size:18px}
+.cr{margin-top:6px;font-size:13px;color:var(--mute)}.cr summary{cursor:pointer;min-height:32px}.cr a{color:var(--seal)}.cr ul{padding-left:18px;line-height:1.8}.cr h3{font:600 14px var(--font);color:var(--ink);margin:14px 0 4px}.cr pre{white-space:pre-wrap;font-size:11.5px;background:var(--soft);padding:10px;border-radius:8px;max-height:220px;overflow:auto}
+.maker{margin:2px 4px 0;font-size:14px;color:var(--mute)}.maker a{color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line)}.maker a:hover{color:var(--seal);text-decoration-color:currentColor}.maker.ver{margin-bottom:-14px}
+.dl{margin:6px 0 0;padding-left:18px;font-size:14px;line-height:1.8}.dl li::marker{color:var(--seal)}
+.empty{color:var(--mute);font-size:14px;padding:6px 0}
+.note{font-size:13px;color:var(--mute);margin-top:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.on{opacity:1}
+.mir{position:absolute;visibility:hidden;white-space:pre-wrap;word-wrap:break-word;top:0;left:0}
+@media(max-width:600px){textarea#ta{font-size:18px;padding:16px;min-height:200px}h1{font-size:26px}.keys{font-size:13px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hd">
+    <h1>빠른 한문 입력기</h1>
+    <button class="help" id="help" aria-label="사용법" aria-expanded="false" aria-controls="helpbox">?</button>
+    <div class="helpbox" id="helpbox" role="dialog" aria-label="사용법" hidden>
+      <b>사용법</b>
+      <ul>
+        <li>한글로 음을 치면 커서 아래에 한자 후보가 뜹니다</li>
+        <li><kbd>Space</kbd> <kbd>↓</kbd> 다음 후보 · <kbd>↑</kbd> 이전 후보</li>
+        <li><kbd>Enter</kbd> 확정 · <kbd>1</kbd>–<kbd>9</kbd> 바로 고르기</li>
+        <li><kbd>Tab</kbd> 다음 쪽 · <kbd>Shift</kbd>+<kbd>Tab</kbd> 이전 쪽</li>
+        <li><kbd>Esc</kbd> 이 낱말은 한글 그대로 두기</li>
+        <li>한글을 드래그해 선택하면 그 부분만 바꿀 수 있습니다</li>
+      </ul>
+    </div>
+  </header>
+  <div class="grid">
+    <section>
+      <div class="ed" id="ed">
+        <div class="bar top">
+          <div class="seg" id="fmt">
+            <button data-v="z">漢字</button><button data-v="zr">漢字(한자)</button><button data-v="rz">한자(漢字)</button>
+          </div>
+          <label class="tg"><input type="checkbox" id="pred"> 예측</label>
+          <label class="tg"><input type="checkbox" id="vert"> 세로쓰기</label>
+          <div class="fs" aria-label="글자 크기"><button id="fsm" aria-label="글자 작게">가−</button><span id="fsv">20</span><button id="fsp" aria-label="글자 크게">가+</button></div>
+        </div>
+        <textarea id="ta" spellcheck="false" aria-label="입력창" placeholder="여기에 한글을 입력하세요"></textarea>
+        <div id="cand" role="listbox" aria-label="한자 후보"></div>
+        <div class="bar">
+          <button class="btn ic" id="fopen" title="파일 열기" aria-label="파일 열기"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5V18a1.5 1.5 0 0 0 1.5 1.5h15A1.5 1.5 0 0 0 21 18v-8.5A1.5 1.5 0 0 0 19.5 8h-7.4L10 5.5H4.5A1.5 1.5 0 0 0 3 7z"/></svg></button>
+          <div class="hist"><button class="btn ic" id="fsave" aria-expanded="false" title="파일로 저장" aria-label="파일로 저장"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11l3 3v12.5a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5V4.5A.5.5 0 0 1 5 4z"/><path d="M8 4v5h7V4"/><rect x="8" y="13" width="8" height="5" rx=".5"/></svg></button><div class="hlist smenu" id="smenu" hidden><button data-f="txt">텍스트 (.txt)<small>Ctrl+S로 바로 저장</small></button><button data-f="docx">워드 (.docx)<small>워드·한글에서 열 수 있음</small></button></div></div>
+          <div class="hist"><button class="btn" id="hbtn" aria-expanded="false" title="자동 보관된 이전 글">이전 기록</button><div class="hlist" id="hlist" hidden></div></div>
+          <input type="file" id="fin" accept=".txt,text/plain" hidden>
+          <span class="sp"></span>
+          <span id="cnt">0자</span>
+          <button class="btn" id="clr">지우기</button>
+          <button class="btn pri" id="cpy">전체 복사</button>
+        </div>
+      </div>
+      <p class="note" id="samp">쓰신 글은 이 브라우저에만 저장됩니다.</p>
+      <footer class="cr">
+        <details>
+          <summary>출처 및 라이선스</summary>
+          <h3>입력기 코드</h3>
+          <ul><li>MIT License — 누구나 자유롭게 쓰고 고치고 배포할 수 있습니다 (전문 아래).</li></ul>
+          <h3>데이터</h3>
+          <ul>
+            <li><b>한자 훈음</b> — <a href="https://github.com/libhangul/libhangul">libhangul</a> data/hanja/hanja.txt. Copyright (c) 2005,2006 Choe Hwanjin. BSD 3-Clause License (전문 아래).</li>
+            <li><b>논어 · 맹자 원문</b> — 維基文庫(Wikisource) <a href="https://zh.wikisource.org/wiki/論語">論語</a> · <a href="https://zh.wikisource.org/wiki/孟子">孟子</a>, 2026-11-15 가져옴. 원문은 저작권이 만료된 공유 저작물이며, 위키문헌의 텍스트는 <a href="https://creativecommons.org/licenses/by-sa/4.0/deed.ko">CC BY-SA 4.0</a>으로 제공됩니다. 이 입력기는 원문을 구절 단위로 나누고 이웃한 두 구절을 이어 붙여 사전으로 가공했으며, 이 가공 데이터도 같은 CC BY-SA 4.0 조건으로 제공합니다.</li>
+            <li><b>조선왕조실록 · 승정원일기</b> — 국사편찬위원회 원문(Open Korean Historical Corpus 수록본, Public Domain). 효종·경종 실록과 승정원일기 숙종 10년·영조 34년에서 어구 빈도를 추출했습니다.</li>
+            <li><b>한자 독음표</b> — xetexko 패키지 hanja_hangul.tab 외. Copyright (c) 2013-2022 Dohyun Kim. <a href="https://www.latex-project.org/lppl.txt">LaTeX Project Public License 1.3c</a>.</li>
+          </ul>
+          <h3>글꼴</h3>
+          <ul>
+            <li><b>Pretendard</b> 1.3.9 (한글·로마자, 부분 글꼴 파일 동봉) 및 <b>Pretendard JP</b> Variable (한자, 글꼴 파일 동봉) — Copyright (c) 2021, Kil Hyung-jin (https://github.com/orioncactus/pretendard), with Reserved Font Name 'Pretendard'. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. Source is a trademark of Adobe in the United States and/or other countries. Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter), with Reserved Font Name 'Inter'. Copyright 2021 The M+ FONTS Project Authors (https://github.com/coz-m/MPLUS_FONTS), with Reserved Font Name 'M PLUS 1'. SIL Open Font License 1.1.</li>
+          </ul>
+          <p>입력기 코드 — MIT License</p>
+          <pre>MIT License
+
+Copyright (c) 2026 세 (@segrc_)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+          <p>libhangul — BSD 3-Clause License</p>
+          <pre>Copyright (c) 2005,2006 Choe Hwanjin
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the author nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.</pre>
+          <p>Pretendard · Pretendard JP — SIL Open Font License 1.1</p>
+          <pre>SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+&quot;Font Software&quot; refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+&quot;Reserved Font Name&quot; refers to any names specified as such after the
+copyright statement(s).
+
+&quot;Original Version&quot; refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+&quot;Modified Version&quot; refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+&quot;Author&quot; refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION &amp; CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.</pre>
+        </details>
+      </footer>
+    </section>
+    <button class="sidet" id="sidet" aria-expanded="true" title="패널 접기">›</button>
+    <aside id="side">
+      <div class="pn">
+        <div class="pnh"><h2>내 단어</h2><button class="rst" id="wreset">초기화</button></div>
+        <ul class="wl" id="wl"></ul>
+      </div>
+      <div class="pn">
+        <h2>사전 구성</h2>
+        <ul class="dl">
+          <li>한자 2만여 자 · 훈음 (libhangul)</li>
+          <li>논어 · 맹자</li>
+          <li>조선왕조실록 · 승정원일기 어구 약 5,600개</li>
+          <li>고전 어구 · 사자성어 · 성씨</li>
+          <li>자주 쓰는 이두 약 60개</li>
+          <li>현대 한자어 약 1,900개</li>
+        </ul>
+      </div>
+      <p class="maker ver">빠른 한문 입력기 v0.1.0 · 2026.11</p>
+      <p class="maker">제작자: 세 <a href="https://x.com/segrc_" target="_blank" rel="noopener">@segrc_</a></p>
+    </aside>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script type="application/json" id="dict">/*DICT*/</script>
+<script>
+/*ENGINE*/
+{
+const E = HanjaEngine;
+E.load(JSON.parse(document.getElementById('dict').textContent));
+const $ = id => document.getElementById(id);
+const ta = $('ta'), cand = $('cand'), ed = $('ed');
+const KEY = 'hanja-ime-v1';
+const store = { get(k, d) { try { const v = localStorage.getItem(KEY + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(KEY + k, JSON.stringify(v)); return true; } catch (e) { return false; } } };
+let user = store.get(':user', { f: {}, w: {} });
+let opt = Object.assign({ fmt: 'z', sty: 'han', gw: true, pred: true, fs: 20, side: true, vert: false }, store.get(':opt', {}));
+opt.mode = 'digit'; opt.sty = 'han';
+let st = { run: null, list: [], ignore: '', sel: 0, act: false }, last = null;
+const han = () => opt.sty === 'han';
+const cOpts = run => ({ exact: run.exact, classical: han(), prev: ta.value[run.start - 1] || '', gwPredict: false, predict: opt.pred });
+const PER = 9;
+const PARTICLE = /^(은|는|이|가|을|를|에|에서|에게|의|와|과|도|로|으로|만|까지|부터|이다|이며|이고|이나|라|하다|하고|하여|해서|한|할|함|했다|하는|입니다|이라|으로서|으로써|처럼|보다|마다|조차|이란|란)$/;
+const saveUser = () => store.set(':user', user);
+
+/* 외부 사전 복원 */
+/* 초기 글 */
+const draft = store.get(':draft', null);
+ta.value = draft != null ? draft : '';
+
+ta.setSelectionRange(ta.value.length, ta.value.length);
+
+/* 커서 좌표: 거울 div */
+const mir = document.createElement('div'); mir.className = 'mir'; ed.appendChild(mir);
+function caretXY(pos) {
+  const cs = getComputedStyle(ta);
+  for (const p of ['font', 'lineHeight', 'padding', 'letterSpacing', 'borderWidth', 'boxSizing']) mir.style[p] = cs[p];
+  const v = !!opt.vert;
+  mir.style.writingMode = v ? 'vertical-rl' : '';
+  mir.style.width = ta.clientWidth + 'px'; mir.style.height = v ? ta.clientHeight + 'px' : '';
+  mir.textContent = ta.value.slice(0, pos);
+  const s = document.createElement('span'); s.textContent = '​'; mir.appendChild(s);
+  const lh = parseFloat(cs.lineHeight) || 32;
+  if (v) return { v, x: s.offsetLeft - ta.scrollLeft + ta.offsetLeft, y: s.offsetTop + ta.offsetTop, h: lh };
+  return { x: s.offsetLeft + ta.offsetLeft, y: s.offsetTop - ta.scrollTop + ta.offsetTop, h: lh };
+}
+
+function currentRun() {
+  const a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+  if (b > a) {
+    const t = v.slice(a, b);
+    if (t.length <= 12 && [...t].every(E.isSyl)) return { start: a, end: b, text: t, exact: true };
+    return null;
+  }
+  return E.findRun(v, a);
+}
+
+function refresh() {
+  const run = currentRun();
+  const key = run ? run.start + ':' + run.text : '';
+  if (!run || key === st.ignore) return hide();
+  if (!st.run || st.run.start !== run.start || st.run.text !== run.text) { st.sel = 0; st.act = false; }
+  st.run = run;
+  st.list = E.withPredictions(E.candidates(run.text, user, cOpts(run)), run.text, user, cOpts(run));
+  if (!st.list.length) return hide();
+  render();
+}
+function hide() { cand.classList.remove('on'); st.run = null; st.list = []; }
+function meanFor(c) {
+  if (!c.mean || c.text.length !== 1) return c.mean;
+  const parts = c.mean.split(' / '), r = c.read, last = s => s.trim().slice(-1);
+  const hit = parts.find(p => p.split(',').some(x => last(x) === r)) || parts.find(p => p.split(',').some(x => E.dueum(last(x)) === r)) || parts[0];
+  return hit.split(',').slice(0, 2).join(',');
+}
+function esc(s) { return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function render() {
+  const pages = Math.ceil(st.list.length / PER);
+  st.sel = Math.max(0, Math.min(st.sel, st.list.length - 1));
+  const pg = Math.floor(st.sel / PER), items = st.list.slice(pg * PER, pg * PER + PER);
+  cand.innerHTML = '<div class="cl">' + items.map((c, i) =>
+    `<button class="c${pg * PER + i === st.sel ? ' sel' : ''}" data-i="${pg * PER + i}" role="option" aria-selected="${pg * PER + i === st.sel}" title="${esc(c.read)}"><i>${i + 1}</i><b>${esc(c.text)}</b>` +
+    (c.read.length > 1 ? `<small>${esc(c.read)}</small>` : '') + (meanFor(c) ? `<small>${esc(meanFor(c))}</small>` : '') + (c.pred ? '<u>예측</u>' : '') + (c.ctx ? '<u>문맥</u>' : '') + (c.learned ? '<em>●</em>' : '') + '</button>').join('') +
+    `</div><div class="cf"><span class="rd">${esc(st.run.text)}</span><span>${st.list.length}개 후보</span><span class="sp"></span>` +
+    `<button data-p="-1" aria-label="이전 쪽">▲</button><span>${pg + 1}/${pages}</span><button data-p="1" aria-label="다음 쪽">▼</button></div>`;
+  const dock = window.innerWidth < 600;
+  cand.classList.toggle('dock', dock);
+  if (!dock) {
+    const p = caretXY(st.run.start);
+    cand.classList.add('on');
+    if (p.v) {   /* 세로쓰기: 현재 줄의 왼쪽에 띄움 */
+      const w = cand.offsetWidth, h = cand.offsetHeight;
+      let left = p.x - w - 6; if (left < 8) left = Math.min(p.x + p.h + 6, ed.clientWidth - w - 8);
+      cand.style.left = Math.max(8, left) + 'px';
+      cand.style.top = Math.max(8, Math.min(p.y, ed.clientHeight - h - 8)) + 'px';
+      return;
+    }
+    const h = cand.offsetHeight, below = p.y + p.h + 4;
+    const top = below + h <= ed.clientHeight - 8 || p.y - h - 4 < 8 ? below : p.y - h - 4;
+    cand.style.top = Math.max(8, top) + 'px';
+    const w = cand.offsetWidth, maxL = ed.clientWidth - w - 8;
+    cand.style.left = Math.max(8, Math.min(p.x, maxL)) + 'px';
+  } else { cand.style.top = cand.style.left = ''; cand.classList.add('on'); }
+}
+
+function pick(i) {
+  const run = currentRun(); if (!run) return;
+  if (!st.run || run.start !== st.run.start || run.text !== st.run.text) { st.run = run; st.list = E.withPredictions(E.candidates(run.text, user, cOpts(run)), run.text, user, cOpts(run)); }
+  const c = st.list[i]; if (!c) return;
+  const e = run.start + c.len;
+  /* 한 마디를 이어서 나눠 고른 경우(大韓 → 民國): 이어 붙이고, 괄호 양식이면 괄호를 하나로 합친다 */
+  const chain = !!(last && last.leftover && last.end === run.start && Date.now() - last.t < 600000);
+  const r = chain ? last.r + c.read : c.read, z = chain ? last.z + c.text : c.text;
+  const s = chain && opt.fmt !== 'z' ? last.start : run.start;
+  const txt = opt.fmt === 'z' ? c.text : E.format(r, z, opt.fmt);
+  const caret = Math.max(ta.selectionEnd, e), np = caret + txt.length - (e - s);
+  ta.focus(); ta.setSelectionRange(s, e);
+  if (!document.execCommand('insertText', false, txt)) ta.setRangeText(txt, s, e, 'end');
+  ta.setSelectionRange(np, np);
+  /* 국한문 모드: 남은 것이 조사·어미뿐이면 후보를 띄우지 않는다 (한문 모드는 항상 이어서 띄움) */
+  const rest = ta.value.slice(s + txt.length, np);
+  if (!han() && PARTICLE.test(rest)) st.ignore = (s + txt.length) + ':' + rest;
+  E.learn(user, c.read, c.text);
+  let added = null;
+  if (chain) {   /* 나눠 고른 낱말 이어 붙여 학습 (大韓 + 民國 → 대한민국) */
+    if (last.added) { const L = user.w[last.added[0]]; if (L) { const k = L.indexOf(last.added[1]); if (k >= 0) L.splice(k, 1); if (!L.length) delete user.w[last.added[0]]; } }
+    const had = (user.w[r] || []).includes(z) || E.candidates(r, null).some(x => x.len === r.length && x.text === z);
+    if (!had && r.length <= 8) { E.addWord(user, r, z); added = [r, z]; }
+    E.learn(user, r, z);
+  }
+  last = { start: chain ? last.start : run.start, end: s + txt.length, r, z, t: Date.now(), leftover: c.len < run.text.length, added };
+  saveUser(); drawWords(); st.sel = 0; st.act = false;
+  requestAnimationFrame(refresh);
+}
+
+/* 이벤트 */
+let raf = 0; const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(refresh); };
+ta.addEventListener('input', () => { later(); store.set(':draft', ta.value); $('cnt').textContent = ta.value.length.toLocaleString() + '자'; });
+['click', 'keyup', 'select', 'compositionupdate', 'compositionend', 'scroll'].forEach(ev => ta.addEventListener(ev, e => {
+  if (ev === 'keyup' && /^[1-9]$/.test(e.key)) return; later(); }));
+const digitOf = e => { const m = /^Digit([1-9])$/.exec(e.code) || /^Numpad([1-9])$/.exec(e.code); return m ? +m[1] : (/^[1-9]$/.test(e.key) ? +e.key : 0); };
+function move(d) { const n = st.list.length; st.sel = (st.sel + d + n) % n; st.act = true; render(); }
+function page(d) { const n = Math.ceil(st.list.length / PER), p = (Math.floor(st.sel / PER) + d + n) % n; st.sel = p * PER; st.act = true; render(); }
+const live = () => cand.classList.contains('on') && st.list.length;
+ta.addEventListener('keydown', e => {
+  if (!live() && !e.isComposing && (digitOf(e) || [' ', 'Enter', 'ArrowDown', 'Tab'].includes(e.key))) refresh();
+  if (!live() || e.ctrlKey || e.metaKey) return;
+  const d = digitOf(e), pg = Math.floor(st.sel / PER) * PER;
+  if (d && !e.isComposing && (opt.mode === 'alt') === e.altKey) { e.preventDefault(); pick(pg + d - 1); return; }
+  if (e.isComposing) return;   /* 조합 중 Space·Enter는 beforeinput에서 처리 */
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (!han() && !st.act) { st.act = true; render(); } else move(1); return; }
+  if (e.key === 'ArrowUp' && st.act) { e.preventDefault(); move(-1); return; }
+  if (e.key === ' ' && (han() || st.act)) { e.preventDefault(); move(e.shiftKey ? -1 : 1); return; }
+  if (e.key === 'Enter' && (han() || st.act)) { e.preventDefault(); pick(st.sel); return; }
+  if (e.key === 'Tab') { e.preventDefault(); page(e.shiftKey ? -1 : 1); return; }
+  if (e.key === 'Escape') { e.preventDefault(); st.ignore = st.run.start + ':' + st.run.text; hide(); }
+});
+/* 조합 중에 숫자·Space·Enter를 누른 경우: 글자가 확정된 뒤 들어오는 입력을 가로챈다 */
+ta.addEventListener('beforeinput', e => {
+  if (!live() || !currentRun()) return;
+  const t = e.inputType, d = e.data || '';
+  if (t === 'insertText' && opt.mode === 'digit' && /^[1-9]$/.test(d)) { e.preventDefault(); pick(Math.floor(st.sel / PER) * PER + +d - 1); }
+  else if (t === 'insertText' && d === ' ' && (han() || st.act)) { e.preventDefault(); move(1); }
+  else if ((t === 'insertLineBreak' || t === 'insertParagraph') && (han() || st.act)) { e.preventDefault(); pick(st.sel); }
+});
+let composing = false;
+ta.addEventListener('compositionstart', () => composing = true);
+ta.addEventListener('compositionend', () => composing = false);
+cand.addEventListener('pointerdown', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  e.preventDefault();
+  if (composing) { ta.blur(); composing = false; }
+  if (b.dataset.p) { page(+b.dataset.p); ta.focus(); return; }
+  pick(+b.dataset.i);
+});
+window.addEventListener('resize', later);
+
+/* 설정 */
+const fmtBtns = [...$('fmt').children];
+const drawFmt = () => fmtBtns.forEach(b => b.setAttribute('aria-pressed', b.dataset.v === opt.fmt));
+fmtBtns.forEach(b => b.onclick = () => { opt.fmt = b.dataset.v; store.set(':opt', opt); drawFmt(); ta.focus(); });
+/* 글자 크기 */
+const applyFs = () => { ta.style.fontSize = opt.fs + 'px'; $('fsv').textContent = opt.fs; later(); };
+$('fsm').onclick = () => { opt.fs = Math.max(14, opt.fs - 2); store.set(':opt', opt); applyFs(); ta.focus(); };
+$('fsp').onclick = () => { opt.fs = Math.min(40, opt.fs + 2); store.set(':opt', opt); applyFs(); ta.focus(); };
+applyFs();
+/* 옆 패널 접기 */
+const grid = document.querySelector('.grid');
+const placeSide = () => { const t = $('sidet'), pns = document.querySelectorAll('aside .pn'); if (window.innerWidth <= 900 || !opt.side || pns.length < 2) return;
+  const a = pns[0].getBoundingClientRect(), b = pns[1].getBoundingClientRect(), g = grid.getBoundingClientRect();
+  t.style.top = ((a.bottom + b.top) / 2 - g.top) + 'px'; };
+const applySide = () => { grid.classList.toggle('closed', !opt.side); placeSide(); const t = $('sidet');
+  t.setAttribute('aria-expanded', opt.side); t.title = opt.side ? '패널 접기' : '패널 펼치기';
+  t.textContent = window.innerWidth <= 900 ? (opt.side ? '패널 접기' : '패널 펼치기') : (opt.side ? '›' : '‹'); later(); };
+$('sidet').onclick = () => { opt.side = !opt.side; store.set(':opt', opt); applySide(); };
+window.addEventListener('resize', applySide); new ResizeObserver(placeSide).observe(document.getElementById('side'));
+applySide();
+const applyVert = () => { ed.classList.toggle('vert', !!opt.vert); $('vert').checked = !!opt.vert; later(); };
+$('vert').onchange = () => { opt.vert = $('vert').checked; store.set(':opt', opt); applyVert(); ta.focus(); };
+applyVert();
+/* 사용법 팝업 */
+const helpBtn = $('help'), helpBox = $('helpbox');
+const setHelp = on => { helpBox.hidden = !on; helpBtn.setAttribute('aria-expanded', on); };
+helpBtn.onclick = e => { e.stopPropagation(); setHelp(helpBox.hidden); };
+document.addEventListener('click', e => { if (!helpBox.hidden && !helpBox.contains(e.target)) setHelp(false); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !helpBox.hidden) setHelp(false); });
+$('pred').checked = opt.pred;
+$('pred').onchange = () => { opt.pred = $('pred').checked; store.set(':opt', opt); st.run = null; ta.focus(); later(); };
+drawFmt();
+
+/* 복사, 지우기, 알림 */
+let tt; function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(tt); tt = setTimeout(() => t.classList.remove('on'), 1600); }
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {
+    const x = document.createElement('textarea'); x.value = text; document.body.appendChild(x); x.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} x.remove(); return ok; }
+}
+$('cpy').onclick = async () => toast(await copy(ta.value) ? '전체 글을 복사했습니다' : '복사하지 못했습니다. 직접 선택해 복사하세요');
+let clrArm = 0;
+$('clr').onclick = () => {
+  if (Date.now() - clrArm > 2500) { clrArm = Date.now(); $('clr').textContent = '한 번 더 누르면 지움'; setTimeout(() => $('clr').textContent = '지우기', 2500); return; }
+  snapshot('지우기 직전'); ta.focus(); ta.select(); if (!document.execCommand('delete')) ta.value = ''; store.set(':draft', ''); $('clr').textContent = '지우기'; clrArm = 0; hide();
+  $('cnt').textContent = '0자';
+};
+
+/* 내 단어 */
+function drawWords() {
+  const rows = [];
+  for (const [r, zs] of Object.entries(user.w || {})) for (const z of zs) rows.push([r, z, (user.f || {})[r + '\t' + z] || 0]);
+  rows.sort((a, b) => b[2] - a[2] || a[0].localeCompare(b[0], 'ko'));
+  $('wl').innerHTML = rows.length ? rows.map(([r, z, n]) =>
+    `<li><b>${esc(z)}</b><span>${esc(r)}</span><small class="empty">${n ? n + '회' : ''}</small><button data-r="${esc(r)}" data-z="${esc(z)}" aria-label="${esc(r)} 삭제">×</button></li>`).join('')
+    : '<li class="empty">아직 없습니다</li>';
+}
+$('wl').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const L = user.w[b.dataset.r] || []; const k = L.indexOf(b.dataset.z); if (k >= 0) L.splice(k, 1);
+  if (!L.length) delete user.w[b.dataset.r]; delete user.f[b.dataset.r + '\t' + b.dataset.z];
+  saveUser(); drawWords(); later();
+};
+drawWords();
+let wArm = 0;
+$('wreset').onclick = () => {
+  const b = $('wreset');
+  if (Date.now() - wArm > 2500) { wArm = Date.now(); b.classList.add('arm'); toast('한 번 더 누르면 내 단어가 모두 지워집니다'); setTimeout(() => b.classList.remove('arm'), 2500); return; }
+  user = { f: {}, w: {} }; last = null; saveUser(); drawWords(); later(); wArm = 0;
+  b.classList.remove('arm'); toast('내 단어를 초기화했습니다');
+};
+
+/* ── 안전장치: 자동 보관(스냅숏), 다른 탭 경고 ── */
+const SNAP_MAX = 30;
+let snaps = store.get(':snaps', []), lastSnap = ta.value;
+function snapshot(reason) {
+  const t = ta.value; if (!t.trim() || t === lastSnap) return;
+  if (snaps.length && snaps[0].x === t) return;
+  snaps.unshift({ d: Date.now(), x: t, r: reason || '' }); snaps = snaps.slice(0, SNAP_MAX);
+  if (!store.set(':snaps', snaps)) { snaps = snaps.slice(0, 10); store.set(':snaps', snaps); }
+  lastSnap = t;
+}
+setInterval(() => snapshot('자동'), 60000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) snapshot('자동'); });
+window.addEventListener('pagehide', () => { store.set(':draft', ta.value); snapshot('자동'); });
+const fmtTime = d => { const t = new Date(d); return `${t.getMonth() + 1}/${t.getDate()} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}`; };
+const hlist = $('hlist'), hbtn = $('hbtn');
+function drawHist() {
+  hlist.innerHTML = snaps.length ? snaps.map((s, i) => `<button data-i="${i}">${esc(s.x.slice(0, 40).replace(/\n/g, ' '))}${s.x.length > 40 ? '…' : ''}<small>${fmtTime(s.d)} · ${s.x.length.toLocaleString()}자${s.r ? ' · ' + esc(s.r) : ''}</small></button>`).join('')
+    : '<div class="empty">아직 보관된 기록이 없습니다. 1분마다 자동으로 보관됩니다.</div>';
+}
+hbtn.onclick = e => { e.stopPropagation(); const open = hlist.hidden; if (open) drawHist(); hlist.hidden = !open; hbtn.setAttribute('aria-expanded', open); };
+document.addEventListener('click', e => { if (!hlist.hidden && !hlist.contains(e.target) && e.target !== hbtn) { hlist.hidden = true; hbtn.setAttribute('aria-expanded', false); } });
+hlist.onclick = e => {
+  const b = e.target.closest('button[data-i]'); if (!b) return;
+  const s = snaps[+b.dataset.i]; snapshot('복구 직전');
+  ta.focus(); ta.select(); if (!document.execCommand('insertText', false, s.x)) ta.value = s.x;
+  store.set(':draft', ta.value); hlist.hidden = true; toast(fmtTime(s.d) + ' 기록으로 되돌렸습니다'); later();
+};
+/* 다른 탭에서 같은 입력기를 쓰면 서로 덮어쓸 수 있으니 알림 */
+window.addEventListener('storage', e => { if (e.key === KEY + ':draft' && e.newValue != null && JSON.parse(e.newValue) !== ta.value) toast('다른 탭에서도 입력기를 쓰고 있습니다. 한 탭에서만 쓰세요'); });
+
+/* ── 파일로 저장 · 열기 ── */
+let fileHandle = null;
+const fname = () => { const t = new Date(); return `한문_${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, '0')}${String(t.getDate()).padStart(2, '0')}_${String(t.getHours()).padStart(2, '0')}${String(t.getMinutes()).padStart(2, '0')}.txt`; };
+/* 간단한 zip 작성기 (압축 없이 저장) + DOCX 생성 */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = u => { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC[(c ^ u[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  for (const [name, str] of files) {
+    const nb = enc.encode(name), db = enc.encode(str), crc = crc32(db);
+    const h = new DataView(new ArrayBuffer(30));
+    h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true);
+    h.setUint16(10, 0, true); h.setUint16(12, 0x21, true); h.setUint32(14, crc, true); h.setUint32(18, db.length, true); h.setUint32(22, db.length, true);
+    h.setUint16(26, nb.length, true); h.setUint16(28, 0, true);
+    parts.push(new Uint8Array(h.buffer), nb, db);
+    const c = new DataView(new ArrayBuffer(46));
+    c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true);
+    c.setUint16(12, 0, true); c.setUint16(14, 0x21, true); c.setUint32(16, crc, true); c.setUint32(20, db.length, true); c.setUint32(24, db.length, true);
+    c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+    cen.push(new Uint8Array(c.buffer), nb);
+    off += 30 + nb.length + db.length;
+  }
+  const csize = cen.reduce((s, x) => s + x.length, 0), e = new DataView(new ArrayBuffer(22));
+  e.setUint32(0, 0x06054b50, true); e.setUint16(8, files.length, true); e.setUint16(10, files.length, true); e.setUint32(12, csize, true); e.setUint32(16, off, true);
+  return new Blob([...parts, ...cen, new Uint8Array(e.buffer)], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+}
+function makeDocx(text, vertical) {
+  const x = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"', H = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const paras = text.split(/\r?\n/).map(l => l ? `<w:p><w:r><w:t xml:space="preserve">${x(l)}</w:t></w:r></w:p>` : '<w:p/>').join('');
+  return zip([
+    ['[Content_Types].xml', H + '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'],
+    ['_rels/.rels', H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'],
+    ['word/_rels/document.xml.rels', H + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+    ['word/styles.xml', H + `<w:styles ${W}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Malgun Gothic" w:hAnsi="Malgun Gothic" w:eastAsia="Malgun Gothic" w:cs="Malgun Gothic"/><w:sz w:val="24"/><w:szCs w:val="24"/><w:lang w:val="ko-KR" w:eastAsia="ko-KR"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="360" w:lineRule="auto"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style></w:styles>`],
+    ['word/document.xml', H + `<w:document ${W}><w:body>${paras}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>${vertical ? '<w:textDirection w:val="tbRl"/>' : ''}</w:sectPr></w:body></w:document>`]
+  ]);
+}
+const FMT = {
+  txt: { ext: '.txt', mime: 'text/plain', desc: '텍스트', make: t => new Blob([t], { type: 'text/plain;charset=utf-8' }) },
+  docx: { ext: '.docx', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', desc: '워드 문서', make: t => makeDocx(t, !!opt.vert) }
+};
+async function saveFile(kind = 'txt') {
+  const f = FMT[kind], text = ta.value; snapshot('저장');
+  const name = fname().replace(/\.txt$/, f.ext);
+  try {
+    if (window.showSaveFilePicker && window.top === window.self) {
+      let h = kind === 'txt' ? fileHandle : null;
+      if (!h) h = await showSaveFilePicker({ suggestedName: name, types: [{ description: f.desc, accept: { [f.mime]: [f.ext] } }] });
+      const w = await h.createWritable(); await w.write(f.make(text)); await w.close();
+      if (kind === 'txt') fileHandle = h;
+      return toast(`${h.name}에 저장했습니다`);
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; if (kind === 'txt') fileHandle = null; }
+  if (window.top !== window.self) { const ok = await copy(text); return toast(ok ? '이 미리보기 화면에서는 파일 저장이 막혀 있어, 대신 전체 글을 복사했습니다' : '이 화면에서는 파일 저장이 막혀 있습니다'); }
+  try {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(f.make(text));
+    a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast(name + ' 파일로 내려받았습니다');
+  } catch (e) { toast('이 화면에서는 파일 저장이 막혀 있습니다. 전체 복사를 쓰세요'); }
+}
+window.__makeDocx = makeDocx;
+const smenu = $('smenu'), fsave = $('fsave');
+fsave.onclick = e => { e.stopPropagation(); smenu.hidden = !smenu.hidden; fsave.setAttribute('aria-expanded', !smenu.hidden); };
+smenu.onclick = e => { const b = e.target.closest('button[data-f]'); if (!b) return; smenu.hidden = true; fsave.setAttribute('aria-expanded', false); saveFile(b.dataset.f); };
+document.addEventListener('click', e => { if (!smenu.hidden && !smenu.contains(e.target)) { smenu.hidden = true; fsave.setAttribute('aria-expanded', false); } });
+
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveFile('txt'); } });
+$('fopen').onclick = () => $('fin').click();
+$('fin').onchange = async () => {
+  const f = $('fin').files[0]; if (!f) return;
+  const text = await f.text(); snapshot('열기 직전');
+  ta.focus(); ta.select(); if (!document.execCommand('insertText', false, text)) ta.value = text;
+  store.set(':draft', ta.value); fileHandle = null; $('fin').value = ''; toast(f.name + ' 을(를) 열었습니다'); later();
+};
+
+$('cnt').textContent = ta.value.length.toLocaleString() + '자';
+refresh();
+}
+</script>
+</body>
+</html>
