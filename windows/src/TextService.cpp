@@ -139,14 +139,16 @@ private:
     std::function<void(TfEditCookie)> fn_;
 };
 
-void SetSelectionEnd(TfEditCookie ec, ITfContext* ctx, ITfRange* range) {
+// interim: 한국어 입력기 방식(조합 중인 한 글자를 블록으로 선택). 카카오톡처럼
+// 옛 IMM 방식으로 한글을 받는 앱은 이렇게 해야 자모가 갈라지지 않는다.
+void SetSelectionEnd(TfEditCookie ec, ITfContext* ctx, ITfRange* range, bool interim = false) {
     ITfRange* r = nullptr;
     if (FAILED(range->Clone(&r))) return;
-    r->Collapse(ec, TF_ANCHOR_END);
+    if (!interim) r->Collapse(ec, TF_ANCHOR_END);
     TF_SELECTION sel = {};
     sel.range = r;
     sel.style.ase = TF_AE_NONE;
-    sel.style.fInterimChar = FALSE;
+    sel.style.fInterimChar = interim ? TRUE : FALSE;
     ctx->SetSelection(ec, 1, &sel);
     r->Release();
 }
@@ -679,7 +681,7 @@ void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& c
             v.lVal = (LONG)attrAtom_;
             prop->SetValue(ec, r, &v);
         }
-        SetSelectionEnd(ec, ctx, r);
+        SetSelectionEnd(ec, ctx, r, mode_ != Mode::Hanmun && compText.size() == 1);
         r->Release();
     }
     SafeRelease(prop);
