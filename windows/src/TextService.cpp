@@ -596,6 +596,7 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
 
 bool TextService::IsTransitory(ITfContext* ctx) {
     TF_STATUS st = {};
+    if (Settings::OneByOne()) return true;
     return ctx && SUCCEEDED(ctx->GetStatus(&st)) && (st.dwStaticFlags & TF_SS_TRANSITORY);
 }
 
@@ -879,6 +880,7 @@ void TextService::ShowMenu(POINT pt) {
     add(12, L"표기: 한자(漢字)", f == 2);
     sep();
     add(20, L"어구 예측", Settings::Predict(), false);
+    add(21, L"한문 모드도 한 글자씩 확정 (글자가 겹쳐 쳐지는 앱용)", Settings::OneByOne(), false);
     sep();
     add(30, L"내 단어 초기화…", false, false);
     add(40, L"빠른 한문 입력기 정보", false, false);
@@ -892,6 +894,7 @@ void TextService::ShowMenu(POINT pt) {
         case 3: SetModeFromUser(Mode::Hanmun); break;
         case 10: case 11: case 12: Settings::SetFormat((int)cmd - 10); break;
         case 20: Settings::SetPredict(!Settings::Predict()); break;
+        case 21: Settings::SetOneByOne(!Settings::OneByOne()); break;
         case 30:
             if (MessageBoxW(nullptr, L"고른 횟수와 내 단어를 모두 지울까요?\n되돌릴 수 없습니다.", L"빠른 한문 입력기",
                             MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES) {

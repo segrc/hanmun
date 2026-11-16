@@ -99,6 +99,8 @@ bool Settings::Predict() { return ReadDword(L"Predict", 1) != 0; }
 void Settings::SetPredict(bool on) { WriteDword(L"Predict", on ? 1 : 0); }
 Mode Settings::KoreanMode() { return ReadDword(L"KoreanMode", 1) == 2 ? Mode::Hanmun : Mode::Hangul; }
 void Settings::SetKoreanMode(Mode m) { WriteDword(L"KoreanMode", m == Mode::Hanmun ? 2 : 1); }
+bool Settings::OneByOne() { return ReadDword(L"OneByOne", 0) != 0; }
+void Settings::SetOneByOne(bool on) { WriteDword(L"OneByOne", on ? 1 : 0); }
 
 // ─────────────────────────────────────────── DLL 내보내기
 
