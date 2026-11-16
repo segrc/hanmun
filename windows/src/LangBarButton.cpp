@@ -75,7 +75,7 @@ STDMETHODIMP_(ULONG) LangBarButton::Release() {
 STDMETHODIMP LangBarButton::GetInfo(TF_LANGBARITEMINFO* info) {
     if (!info) return E_INVALIDARG;
     info->clsidService = CLSID_Hanmun;
-    info->guidItem = GUID_LBI_INPUTMODE;
+    info->guidItem = GUID_InputModeItem;
     info->dwStyle = TF_LBI_STYLE_BTN_BUTTON | TF_LBI_STYLE_SHOWNINTRAY;
     info->ulSort = 0;
     lstrcpynW(info->szDescription, L"빠른 한문 입력기 입력 상태", TF_LBI_DESC_MAXLEN);

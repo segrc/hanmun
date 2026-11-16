@@ -24,6 +24,7 @@ extern LONG g_cRefDll;
 extern const CLSID CLSID_Hanmun;        // 입력기(텍스트 서비스) 클래스
 extern const GUID GUID_HanmunProfile;   // 한국어 입력 프로필
 extern const GUID GUID_HanmunDisplayAttr; // 조합 중 글자 밑줄
+extern const GUID GUID_InputModeItem;     // = GUID_LBI_INPUTMODE (작업 표시줄 입력 표시기)
 
 inline void DllAddRef() { InterlockedIncrement(&g_cRefDll); }
 inline void DllRelease() { InterlockedDecrement(&g_cRefDll); }

@@ -15,6 +15,9 @@ const GUID GUID_HanmunProfile = {0x4025d9cf, 0xb997, 0x4984, {0x87, 0xe3, 0x77, 
 // {64846B4B-39F8-467C-A45C-174CCE725FA5}
 const GUID GUID_HanmunDisplayAttr = {0x64846b4b, 0x39f8, 0x467c, {0xa4, 0x5c, 0x17, 0x4c, 0xce, 0x72, 0x5f, 0xa5}};
 
+// GUID_LBI_INPUTMODE {2C77A81E-41CC-4178-A3A7-5F8A987568E6}
+const GUID GUID_InputModeItem = {0x2c77a81e, 0x41cc, 0x4178, {0xa3, 0xa7, 0x5f, 0x8a, 0x98, 0x75, 0x68, 0xe6}};
+
 namespace {
 const wchar_t kName[] = L"빠른 한문 입력기";
 const wchar_t kClsidKey[] = L"CLSID\\{2F3C03EE-41F3-47DB-A00C-ACDACFFB961A}";
