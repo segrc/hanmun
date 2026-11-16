@@ -2,3 +2,5 @@ build/
 dist/
 __pycache__/
 *.dict
+web/hanmun-ime-cloudflare.zip
+web/src/hanja-ime.html

@@ -28,6 +28,7 @@ def prim(ch):
 SUR=set('李金朴鄭崔尹趙申洪權閔沈兪柳韓宋吳徐黃安張林任姜具南元成許睿蔡呂盧趙睦宋')
 out={}; drop=0
 for w,k in kept.items():
+    if '卷' in w: drop+=1; continue   # 실록 권 머리말 조각(實錄卷之 등)
     if w[-1] in SUR and (w[:-1] in kept or len(w)>=3): drop+=1; continue
     if w[0] in SUR and len(w)==4 and w[1:] in kept: drop+=1; continue
     if len(w)>=3 and any(w[i] in SUR and w[:i] in kept for i in range(1,len(w))): drop+=1; continue
@@ -42,6 +43,7 @@ for w,k in kept.items():
     else:
         h=''.join(rs); h=dueum(h[0])+h[1:]
         out.setdefault(h,[]).append((k,w))
+out.setdefault('실록',[]).insert(0,(0,'實錄'))
 res={h:[w for k,w in sorted(v,reverse=True)] for h,v in sorted(out.items(),key=lambda x:-max(k for k,w in x[1]))}
 print('dropped',drop,'entries',sum(len(v) for v in res.values()))
 for h in ['승지','영의정','불가','부득','하여','이위','지도','상왈','계왈','도승지','이조판서','이차진복','불가불','악','전교']:
