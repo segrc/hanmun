@@ -27,9 +27,11 @@ SIZE TextSize(HDC dc, HFONT f, const std::wstring& s) {
 std::wstring Extra(const Candidate& c) {
     std::wstring e;
     if (c.pred) e = c.read;                       // 예측 후보는 전체 독음
-    if (!c.mean.empty() && c.text.size() <= 2) { // 한 글자면 훈음
+    if (!c.mean.empty() && c.text.size() <= 2) { // 한 글자면 훈음 (앞의 두 가지만)
         if (!e.empty()) e += L"  ";
-        e += c.mean;
+        size_t cut = c.mean.find(L", ");
+        if (cut != std::wstring::npos) cut = c.mean.find(L", ", cut + 2);
+        e += cut == std::wstring::npos ? c.mean : c.mean.substr(0, cut);
     }
     return e;
 }
@@ -94,7 +96,7 @@ SIZE CandidateWindow::Measure() {
         std::wstring e = Extra(c);
         if (!e.empty()) extraW_ = std::max<int>(extraW_, TextSize(dc, fSmall_, e).cx);
     }
-    extraW_ = std::min<int>(extraW_, Scale(190, dpi_));
+    extraW_ = std::min<int>(extraW_, Scale(150, dpi_));
     footH_ = pages_ > 1 ? TextSize(dc, fSmall_, L"1/2").cy + Scale(4, dpi_) : 0;
     ReleaseDC(hwnd_, dc);
     int w = pad_ * 2 + Scale(6, dpi_) + numW_ + gap_ + textW_ + (extraW_ ? gap_ + extraW_ : 0) + Scale(10, dpi_);
@@ -122,9 +124,14 @@ void CandidateWindow::Show(const RECT& anchor, const std::vector<Candidate>& can
     GetMonitorInfoW(mon, &mi);
     const RECT& wa = mi.rcWork;
     int x = anchor.left - pad_ - Scale(6, dpi_) - numW_ - gap_ / 2, y = anchor.bottom + Scale(3, dpi_);
-    if (y + sz.cy > wa.bottom) y = anchor.top - sz.cy - Scale(3, dpi_);   // 아래 자리가 없으면 위로
+    if (y + sz.cy > wa.bottom) {
+        // 아래 자리가 없으면 조합 글자 오른쪽 옆에 (줄 끝이라 보통 비어 있다). 그것도 안 되면 위로
+        int rx = anchor.right + Scale(6, dpi_);
+        if (rx + sz.cx <= wa.right) { x = rx; y = anchor.bottom - sz.cy; }
+        else y = anchor.top - sz.cy - Scale(3, dpi_);
+    }
     x = std::max<int>(wa.left, std::min<int>(x, wa.right - sz.cx));
-    y = std::max<int>(wa.top, y);
+    y = std::max<int>(wa.top, std::min<int>(y, wa.bottom - sz.cy));
     SetWindowPos(hwnd_, HWND_TOPMOST, x, y, sz.cx, sz.cy, SWP_NOACTIVATE | SWP_SHOWWINDOW);
     InvalidateRect(hwnd_, nullptr, FALSE);
 }

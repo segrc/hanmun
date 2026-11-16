@@ -136,9 +136,10 @@ static NSFont* SmallFont() { return [NSFont systemFontOfSize:kSmallSize]; }
         r.text = NSFromW(c.text);
         NSMutableString* ex = [NSMutableString string];
         if (c.pred) [ex appendString:NSFromW(c.read)];
-        if (!c.mean.empty() && Engine::Chars(c.text).size() == 1) {
+        if (!c.mean.empty() && Engine::Chars(c.text).size() == 1) {   // 훈음은 앞의 두 가지만
             if (ex.length) [ex appendString:@"  "];
-            [ex appendString:NSFromW(c.mean)];
+            NSArray* parts = [NSFromW(c.mean) componentsSeparatedByString:@", "];
+            [ex appendString:[[parts subarrayWithRange:NSMakeRange(0, MIN(2, parts.count))] componentsJoinedByString:@", "]];
         }
         r.extra = ex;
         r.pred = c.pred;
@@ -146,7 +147,7 @@ static NSFont* SmallFont() { return [NSFont systemFontOfSize:kSmallSize]; }
         if (ex.length) extraW = MAX(extraW, [ex sizeWithAttributes:smallA].width);
         [rows addObject:r];
     }
-    extraW = MIN(extraW, 190);
+    extraW = MIN(extraW, 150);
     CGFloat rowH = ceil([@"漢가" sizeWithAttributes:mainA].height) + kRowExtra;
     CGFloat numW = [@"9" sizeWithAttributes:smallA].width;
     CGFloat footH = pages > 1 ? [@"1/2" sizeWithAttributes:smallA].height + 4 : 0;
@@ -168,8 +169,14 @@ static NSFont* SmallFont() { return [NSFont systemFontOfSize:kSmallSize]; }
     NSRect vis = screen.visibleFrame;
     CGFloat x = line.origin.x - kPad - 6 - numW - kGap / 2;
     CGFloat y = line.origin.y - h - 3;                            // 글자 아래
-    if (y < vis.origin.y) y = NSMaxY(line) + 3;                   // 자리가 없으면 위
+    if (y < vis.origin.y) {
+        // 아래 자리가 없으면 글자 오른쪽 옆에, 그것도 안 되면 위로
+        CGFloat rx = NSMaxX(line) + 6;
+        if (rx + w <= NSMaxX(vis)) { x = rx; y = line.origin.y; }
+        else y = NSMaxY(line) + 3;
+    }
     x = MAX(vis.origin.x, MIN(x, NSMaxX(vis) - w));
+    y = MAX(vis.origin.y, MIN(y, NSMaxY(vis) - h));
     [_panel setFrame:NSMakeRect(x, y, w, h) display:NO];
     _view.frame = NSMakeRect(0, 0, w, h);
     [_view setNeedsDisplay:YES];
