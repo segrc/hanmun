@@ -681,7 +681,17 @@ void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& c
             v.lVal = (LONG)attrAtom_;
             prop->SetValue(ec, r, &v);
         }
-        SetSelectionEnd(ec, ctx, r, mode_ != Mode::Hanmun && compText.size() == 1);
+        // 한국어 입력기 방식: 조합 문자열의 마지막 글자를 블록(interim)으로 잡는다.
+        // 한문 모드의 여러 글자 조합도 이렇게 해야 카카오톡 같은 옛 방식 앱에서 자모가 갈라지지 않는다.
+        ITfRange* last = nullptr;
+        if (SUCCEEDED(r->Clone(&last))) {
+            LONG lastLen = (compText.size() >= 2 && compText.back() >= 0xDC00 && compText.back() <= 0xDFFF) ? 2 : 1;
+            LONG moved = 0;
+            last->Collapse(ec, TF_ANCHOR_END);
+            last->ShiftStart(ec, -lastLen, &moved, nullptr);
+            SetSelectionEnd(ec, ctx, last, true);
+            last->Release();
+        } else SetSelectionEnd(ec, ctx, r);
         r->Release();
     }
     SafeRelease(prop);

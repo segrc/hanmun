@@ -1,6 +1,6 @@
 # 빠른 한문 입력기 — Windows 11 TSF 입력기
 cmake_minimum_required(VERSION 3.20)
-project(hanmun VERSION 0.1.2 LANGUAGES CXX RC)
+project(hanmun VERSION 0.1.3 LANGUAGES CXX RC)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
