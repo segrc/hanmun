@@ -6,9 +6,9 @@
 
 namespace {
 const CGFloat kMainSize = 16, kSmallSize = 11, kPad = 4, kGap = 8, kRowExtra = 5;
-NSColor* Accent() { return [NSColor colorWithSRGBRed:138 / 255.0 green:204 / 255.0 blue:92 / 255.0 alpha:1]; }
-NSColor* AccentText() { return [NSColor colorWithSRGBRed:28 / 255.0 green:40 / 255.0 blue:12 / 255.0 alpha:1]; }
-NSColor* PredColor() { return [NSColor colorWithSRGBRed:62 / 255.0 green:128 / 255.0 blue:32 / 255.0 alpha:1]; }
+NSColor* Accent() { return [NSColor colorWithSRGBRed:172 / 255.0 green:218 / 255.0 blue:168 / 255.0 alpha:1]; }
+NSColor* AccentText() { return [NSColor colorWithSRGBRed:24 / 255.0 green:44 / 255.0 blue:24 / 255.0 alpha:1]; }
+NSColor* PredColor() { return [NSColor colorWithSRGBRed:66 / 255.0 green:128 / 255.0 blue:70 / 255.0 alpha:1]; }
 }  // namespace
 
 @interface CandidateRow : NSObject

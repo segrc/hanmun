@@ -8,7 +8,7 @@ def app_icon(S):
     k = S / 64
     im = Image.new('RGBA', (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(im)
     R = lambda x, y, w, h: [x*k, y*k, (x+w)*k, (y+h)*k]
-    d.rounded_rectangle(R(0, 0, 64, 64), radius=14*k, fill='#6ab83a')
+    d.rounded_rectangle(R(0, 0, 64, 64), radius=14*k, fill='#7cc07a')
     d.rounded_rectangle(R(10, 19, 44, 27), radius=5*k, outline='white', width=max(1, round(3.5*k)))
     for x in (16, 22.6, 29.2, 35.8, 42.4):
         d.rounded_rectangle(R(x, 25, 4.2, 4.2), radius=1.1*k, fill='white')
