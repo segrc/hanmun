@@ -12,6 +12,10 @@
   - `corpus*.py`(실록·승정원일기 통계), `classics*.py`(논어·맹자 구절)
   - 원자료(말뭉치 jsonl, 위키문헌 json, libhangul hanja.txt)는 `Downloads\Open-Korean-Historical-Corpus\왕대별`에 있음
 
+## 웹 사이트 배포 (hanmun.j-segrc.workers.dev)
+Cloudflare Worker `hanmun`이 이 저장소 `main` 브랜치의 `web/deploy/`를 그대로 내보냅니다(GitHub 원본, 안 되면 jsDelivr).
+`web/deploy/`를 고쳐서 push하면 몇 분 안에 사이트에 반영되므로 zip을 따로 올릴 필요가 없습니다. Worker 코드는 `web/worker.js`.
+
 ## 다시 빌드하기 (web/src 안에서)
     python3 make.py          # hanja-ime.html 생성
     python3 build_deploy.py  # deploy/ 갱신 + hanmun-ime-cloudflare.zip
