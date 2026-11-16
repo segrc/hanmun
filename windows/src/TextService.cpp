@@ -743,13 +743,14 @@ void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& c
 void TextService::ShowCandidates(TfEditCookie ec, ITfContext* ctx) {
     if (!cand_) return;
     if (cands_.empty() || !comp_) { cand_->Hide(); return; }
-    RECT rc = {};
+    RECT rc = {}, box = {};
     bool ok = false;
     ITfContextView* view = nullptr;
     ITfRange* r = nullptr;
     if (SUCCEEDED(ctx->GetActiveView(&view)) && SUCCEEDED(comp_->GetRange(&r))) {
         BOOL clipped = FALSE;
         ok = view->GetTextExt(ec, r, &rc, &clipped) == S_OK && (rc.bottom > rc.top || rc.right > rc.left);
+        if (view->GetScreenExt(&box) != S_OK) box = {};
     }
     SafeRelease(r);
     SafeRelease(view);
@@ -764,7 +765,7 @@ void TextService::ShowCandidates(TfEditCookie ec, ITfContext* ctx) {
             rc = {pt.x, pt.y, pt.x, pt.y + 20};
         }
     }
-    cand_->Show(rc, cands_, sel_);
+    cand_->Show(rc, box, cands_, sel_);
 }
 
 void TextService::OnCandidateClicked(int index) {

@@ -169,12 +169,7 @@ static NSFont* SmallFont() { return [NSFont systemFontOfSize:kSmallSize]; }
     NSRect vis = screen.visibleFrame;
     CGFloat x = line.origin.x - kPad - 6 - numW - kGap / 2;
     CGFloat y = line.origin.y - h - 3;                            // 글자 아래
-    if (y < vis.origin.y) {
-        // 아래 자리가 없으면 글자 오른쪽 옆에, 그것도 안 되면 위로
-        CGFloat rx = NSMaxX(line) + 6;
-        if (rx + w <= NSMaxX(vis)) { x = rx; y = line.origin.y; }
-        else y = NSMaxY(line) + 3;
-    }
+    if (y < vis.origin.y) y = NSMaxY(line) + 3;                   // 자리가 없으면 위
     x = MAX(vis.origin.x, MIN(x, NSMaxX(vis) - w));
     y = MAX(vis.origin.y, MIN(y, NSMaxY(vis) - h));
     [_panel setFrame:NSMakeRect(x, y, w, h) display:NO];

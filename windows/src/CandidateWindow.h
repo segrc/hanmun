@@ -13,8 +13,8 @@ public:
     static const int kPage = 9;
     explicit CandidateWindow(TextService* owner);
     ~CandidateWindow();
-    // anchor: 조합 글자의 화면 위치. 그 아래(자리가 없으면 위)에 띄운다
-    void Show(const RECT& anchor, const std::vector<Candidate>& cands, int sel);
+    // anchor: 조합 글자의 화면 위치, box: 입력 칸 전체. 글자 아래(자리가 없으면 칸 위)에 띄운다
+    void Show(const RECT& anchor, const RECT& box, const std::vector<Candidate>& cands, int sel);
     void Hide();
     HWND Hwnd();
 

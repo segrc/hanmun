@@ -105,7 +105,7 @@ SIZE CandidateWindow::Measure() {
     return {w, h};
 }
 
-void CandidateWindow::Show(const RECT& anchor, const std::vector<Candidate>& cands, int sel) {
+void CandidateWindow::Show(const RECT& anchor, const RECT& box, const std::vector<Candidate>& cands, int sel) {
     if (cands.empty()) { Hide(); return; }
     if (!hwnd_ && !Create()) return;
     sel_ = sel;
@@ -125,10 +125,11 @@ void CandidateWindow::Show(const RECT& anchor, const std::vector<Candidate>& can
     const RECT& wa = mi.rcWork;
     int x = anchor.left - pad_ - Scale(6, dpi_) - numW_ - gap_ / 2, y = anchor.bottom + Scale(3, dpi_);
     if (y + sz.cy > wa.bottom) {
-        // 아래 자리가 없으면 조합 글자 오른쪽 옆에 (줄 끝이라 보통 비어 있다). 그것도 안 되면 위로
-        int rx = anchor.right + Scale(6, dpi_);
-        if (rx + sz.cx <= wa.right) { x = rx; y = anchor.bottom - sz.cy; }
-        else y = anchor.top - sz.cy - Scale(3, dpi_);
+        // 아래 자리가 없으면 위로. 작은 입력 칸이면 칸 전체 위로 올려서 칸을 가리지 않는다
+        y = anchor.top - sz.cy - Scale(3, dpi_);
+        if (box.bottom > box.top && box.top < anchor.top && anchor.top - box.top <= Scale(260, dpi_) &&
+            box.top - sz.cy - Scale(3, dpi_) >= wa.top)
+            y = box.top - sz.cy - Scale(3, dpi_);
     }
     x = std::max<int>(wa.left, std::min<int>(x, wa.right - sz.cx));
     y = std::max<int>(wa.top, std::min<int>(y, wa.bottom - sz.cy));
