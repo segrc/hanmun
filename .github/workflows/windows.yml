@@ -1,0 +1,52 @@
+name: Windows 입력기 빌드
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 64비트 DLL
+        run: |
+          cmake -S windows -B build/x64 -A x64
+          cmake --build build/x64 --config Release
+
+      - name: 32비트 DLL (32비트 앱용)
+        run: |
+          cmake -S windows -B build/x86 -A Win32
+          cmake --build build/x86 --config Release
+
+      - name: 설치 파일 만들기
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup -y --no-progress
+          }
+          & $iscc "/DBuildDir=$env:GITHUB_WORKSPACE\build" windows\installer\hanmun.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hanmun-windows
+          path: |
+            dist/*.exe
+            build/x64/Release/hanmun.dll
+            build/x86/Release/hanmun.dll
+
+      - name: 태그면 릴리스에 올리기
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe

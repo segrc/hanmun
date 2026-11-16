@@ -1,0 +1,30 @@
+// 빠른 한문 입력기 리소스 (CMake가 사전 경로를 채운다)
+#include <windows.h>
+#pragma code_page(65001)
+
+101 ICON "@ICON_PATH@"
+201 RCDATA "@DICT_PATH@"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION @V1@,@V2@,@V3@,0
+ PRODUCTVERSION @V1@,@V2@,@V3@,0
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "041204B0"
+    BEGIN
+      VALUE "CompanyName", "세 (@segrc_)"
+      VALUE "FileDescription", "빠른 한문 입력기"
+      VALUE "FileVersion", "@PROJECT_VERSION@"
+      VALUE "LegalCopyright", "Copyright (c) 2026 세 (@segrc_) — MIT License"
+      VALUE "ProductName", "빠른 한문 입력기"
+      VALUE "ProductVersion", "@PROJECT_VERSION@"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x412, 1200
+  END
+END
