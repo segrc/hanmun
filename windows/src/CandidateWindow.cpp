@@ -11,8 +11,8 @@
 namespace {
 const wchar_t kClass[] = L"HanmunCandidateWindow";
 const COLORREF kBg = RGB(255, 255, 255), kBorder = RGB(214, 220, 226), kText = RGB(28, 32, 36),
-               kDim = RGB(128, 136, 144), kAccent = RGB(166, 214, 84), kAccentText = RGB(28, 40, 12),
-               kPred = RGB(88, 140, 30);
+               kDim = RGB(128, 136, 144), kAccent = RGB(138, 204, 92), kAccentText = RGB(28, 40, 12),
+               kPred = RGB(62, 128, 32);
 
 int Scale(int v, UINT dpi) { return MulDiv(v, (int)dpi, 96); }
 
