@@ -16,7 +16,7 @@
 #include <msctf.h>
 #include <string>
 
-#define HANMUN_VERSION L"0.1.11"
+#define HANMUN_VERSION L"0.1.12"
 
 extern HINSTANCE g_hInst;
 extern LONG g_cRefDll;
@@ -42,8 +42,6 @@ namespace Settings {
     void SetPredict(bool on);
     Mode KoreanMode();       // 한글 상태로 돌아올 때 쓸 모드(한글/한문)
     void SetKoreanMode(Mode m);
-    bool OneByOne();         // 한문 모드에서도 항상 한 글자씩 확정 (옛 방식 앱 대응을 모든 앱에)
-    void SetOneByOne(bool on);
 }
 
 #define IDI_HANMUN 101

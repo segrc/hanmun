@@ -596,8 +596,28 @@ void TextService::Execute(TfEditCookie ec, ITfContext* ctx, const Action& a) {
 
 bool TextService::IsTransitory(ITfContext* ctx) {
     TF_STATUS st = {};
-    if (Settings::OneByOne()) return true;
-    return ctx && SUCCEEDED(ctx->GetStatus(&st)) && (st.dwStaticFlags & TF_SS_TRANSITORY);
+    if (!ctx) return false;
+    // 1) TSF 가 '임시 문서'(옛 IMM 방식 앱을 이어 주는 것)라고 알려 주는 경우
+    if (SUCCEEDED(ctx->GetStatus(&st)) && (st.dwStaticFlags & TF_SS_TRANSITORY)) return true;
+    // 2) 옛 표준 입력 칸(파일 이름 바꾸기 등)
+    HWND w = nullptr;
+    ITfContextView* view = nullptr;
+    if (SUCCEEDED(ctx->GetActiveView(&view))) { view->GetWnd(&w); view->Release(); }
+    if (!w) w = GetFocus();
+    if (w) {
+        wchar_t cls[64] = {};
+        GetClassNameW(w, cls, 64);
+        if (!_wcsicmp(cls, L"Edit") || !_wcsnicmp(cls, L"RichEdit20", 10) || !_wcsicmp(cls, L"RICHEDIT50W")) return true;
+    }
+    // 3) 여러 글자 조합을 못 받는 것으로 알려진 앱
+    static const int known = [] {
+        wchar_t path[MAX_PATH] = {};
+        GetModuleFileNameW(nullptr, path, MAX_PATH);
+        const wchar_t* name = wcsrchr(path, L'\\');
+        name = name ? name + 1 : path;
+        return !_wcsicmp(name, L"KakaoTalk.exe") ? 1 : 0;
+    }();
+    return known != 0;
 }
 
 // 이미 앱에 넣은 글자를 지우고(Backspace) 새 글자를 쳐 넣는다
@@ -880,7 +900,6 @@ void TextService::ShowMenu(POINT pt) {
     add(12, L"표기: 한자(漢字)", f == 2);
     sep();
     add(20, L"어구 예측", Settings::Predict(), false);
-    add(21, L"한문 모드도 한 글자씩 확정 (글자가 겹쳐 쳐지는 앱용)", Settings::OneByOne(), false);
     sep();
     add(30, L"내 단어 초기화…", false, false);
     add(40, L"빠른 한문 입력기 정보", false, false);
@@ -894,7 +913,6 @@ void TextService::ShowMenu(POINT pt) {
         case 3: SetModeFromUser(Mode::Hanmun); break;
         case 10: case 11: case 12: Settings::SetFormat((int)cmd - 10); break;
         case 20: Settings::SetPredict(!Settings::Predict()); break;
-        case 21: Settings::SetOneByOne(!Settings::OneByOne()); break;
         case 30:
             if (MessageBoxW(nullptr, L"고른 횟수와 내 단어를 모두 지울까요?\n되돌릴 수 없습니다.", L"빠른 한문 입력기",
                             MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) == IDYES) {
