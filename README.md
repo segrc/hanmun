@@ -9,7 +9,8 @@
   - `fonts/` Pretendard(한글 부분), Pretendard JP Variable(한자)
 - `data-build/` — 사전을 처음부터 다시 만드는 스크립트와 직접 작성한 단어 목록
   - `chars.py`(글자 독음표) → `build.py`(현대 한자어) → `build2.py`(고전 어구·이두)
-  - `corpus*.py`(실록·승정원일기 통계), `classics*.py`(논어·맹자 구절)
+  - `corpus_v2.py`(실록 인조~순조 8대 + 승정원일기 표본 → 어구·글자 통계. 인명 표시를 써서 '이름+왈' 같은 조각 제외, 여러 왕대에 고루 나오는 어구만), `classics*.py`(논어·맹자 구절)
+  - `corpus.py`~`corpus3.py`는 예전 방식(참고용)
   - 원자료(말뭉치 jsonl, 위키문헌 json, libhangul hanja.txt)는 `Downloads\Open-Korean-Historical-Corpus\왕대별`에 있음
 
 ## 웹 사이트 배포 (hanmun.j-segrc.workers.dev)

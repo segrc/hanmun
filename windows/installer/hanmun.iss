@@ -1,6 +1,6 @@
 ; 빠른 한문 입력기 설치 파일 (Inno Setup 6)
 #ifndef AppVersion
-  #define AppVersion "0.1.16"
+  #define AppVersion "0.1.17"
 #endif
 #ifndef BuildDir
   #define BuildDir "..\..\build"
