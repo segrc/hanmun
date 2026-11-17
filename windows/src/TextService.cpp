@@ -474,7 +474,14 @@ STDMETHODIMP TextService::OnTestKeyDown(ITfContext* ctx, WPARAM w, LPARAM l, BOO
     else rctrlAlone_ = false;
     SyncMode();
     if (GetMessageExtraInfo() == (LPARAM)kResent) { *eaten = FALSE; return S_OK; }   // 확정 뒤 다시 보낸 키
-    *eaten = ctx && Classify(w).act != Act::None;
+    Action a = Classify(w);
+    // 방향키·Enter·Tab 처럼 조합만 끝내면 되는 키: 키를 받기 전에 조합을 끝내 두고 키는 손대지 않고 앱에 넘긴다.
+    // (입력기가 키를 가져갔다 넘기면 엑셀·크롬 등에서 키가 무시되거나 다르게 처리되는 일이 있어서)
+    if (ctx && a.act == Act::CommitPass) {
+        HRESULT hr = RunEdit(ctx, TF_ES_SYNC | TF_ES_READWRITE, [this, ctx](TfEditCookie ec) { CommitAll(ec, ctx); lastChar_.clear(); });
+        if (SUCCEEDED(hr) && !Composing()) { *eaten = FALSE; return S_OK; }
+    }
+    *eaten = ctx && a.act != Act::None;
     return S_OK;
 }
 
