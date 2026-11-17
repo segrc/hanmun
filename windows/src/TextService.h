@@ -111,7 +111,8 @@ private:
     // 후보를 고르면 이미 넣은 한글을 지우고 다시 쳐 넣는다
     bool trans_ = false;
     std::wstring emitted_;
-    RECT lastRc_ = {}, lastBox_ = {};   // 그렇게 앱에 이미 넣은 이번 묶음의 글자
+    RECT lastRc_ = {}, lastBox_ = {};
+    DWORD retryTick_ = 0;   // 그렇게 앱에 이미 넣은 이번 묶음의 글자
 };
 
 // 엔진은 프로세스마다 한 번만 불러 쓴다

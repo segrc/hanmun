@@ -353,13 +353,23 @@ void TextService::SetModeFromUser(Mode m) {
 
 // ─────────────────────────────────────────── 포커스·조합 종료
 
-STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr*, ITfDocumentMgr*) {
+STDMETHODIMP TextService::OnSetFocus(ITfDocumentMgr* focus, ITfDocumentMgr*) {
     if (cand_) cand_->Hide();
     if (Composing() && compCtx_)
         RunEdit(compCtx_, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, [this](TfEditCookie ec) { if (compCtx_) CommitAll(ec, compCtx_); });
     lastChar_.clear();
     SyncMode();
     if (button_) button_->Update();
+    // 조합을 거절당한 직후 새 편집 칸이 생겼으면 거기서 이어서 조합
+    if (focus && !comp_ && retryTick_ && GetTickCount() - retryTick_ < 1500 && Composing()) {
+        ITfContext* ctx = nullptr;
+        if (SUCCEEDED(focus->GetTop(&ctx)) && ctx) {
+            RunEdit(ctx, TF_ES_ASYNCDONTCARE | TF_ES_READWRITE, [this, ctx](TfEditCookie ec) {
+                if (!comp_ && Composing()) { Refresh(); Update(ec, ctx, L""); }
+                ctx->Release();
+            });
+        }
+    }
     return S_OK;
 }
 
@@ -477,9 +487,13 @@ STDMETHODIMP TextService::OnKeyDown(ITfContext* ctx, WPARAM w, LPARAM, BOOL* eat
     if (a.act == Act::None) return S_OK;
     RunEdit(ctx, TF_ES_SYNC | TF_ES_READWRITE, [this, ctx, a](TfEditCookie ec) { Execute(ec, ctx, a); });
     *eaten = TRUE;
-    // Enter·방향키·Alt+Enter 같은 키: 조합을 확정한 뒤 같은 키를 다시 보낸다.
-    // 확정과 키를 한 번에 넘기면 크롬·Claude 앱 등에서 키가 무시되는 일이 있어서.
-    if (a.act == Act::CommitPass) Resend((UINT)w);
+    if (a.act == Act::CommitPass) {
+        // 한글 모드(한 글자 조합)는 기본 한국어 입력기처럼 확정하고 키를 그대로 넘긴다
+        if (mode_ == Mode::Hangul && !trans_) *eaten = FALSE;
+        // 한문 모드: 여러 글자 조합을 확정한 뒤 같은 키를 다시 보낸다
+        // (확정과 키를 한 번에 넘기면 크롬·Claude 앱 등에서 키가 무시되는 일이 있어서)
+        else Resend((UINT)w);
+    }
     return S_OK;
 }
 
@@ -770,9 +784,17 @@ void TextService::Update(TfEditCookie ec, ITfContext* ctx, const std::wstring& c
                 ias->Release();
                 SafeRelease(range);
             }
+            // 엑셀처럼 첫 키에 조합을 거절하고 편집 칸을 새로 여는 앱: 친 글자를 버리지 않고
+            // 들고 있다가 새 칸에 포커스가 오면 거기서 다시 조합을 연다 (잠깐 동안만)
+            if (!compText.empty()) {
+                if (!retryTick_) retryTick_ = GetTickCount();
+                if (GetTickCount() - retryTick_ < 1500) return;
+            }
+            retryTick_ = 0;
             ResetState();
             return;
         }
+        retryTick_ = 0;
         compCtx_ = ctx;
         compCtx_->AddRef();
     }
