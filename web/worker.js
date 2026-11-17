@@ -5,7 +5,7 @@ const SOURCES = [
   'https://raw.githubusercontent.com/segrc/hanmun/main/web/deploy',
   'https://cdn.jsdelivr.net/gh/segrc/hanmun@main/web/deploy',
 ];
-const TYPES = { html: 'text/html; charset=utf-8', svg: 'image/svg+xml', woff2: 'font/woff2', txt: 'text/plain; charset=utf-8' };
+const TYPES = { html: 'text/html; charset=utf-8', json: 'application/json; charset=utf-8', md: 'text/markdown; charset=utf-8', svg: 'image/svg+xml', woff2: 'font/woff2', txt: 'text/plain; charset=utf-8' };
 export default {
   async fetch(request) {
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method Not Allowed', { status: 405 });
@@ -26,7 +26,7 @@ export default {
           'x-content-type-options': 'nosniff',
           'referrer-policy': 'strict-origin-when-cross-origin',
         });
-        if (font) h.set('access-control-allow-origin', '*');
+        if (font || ext === 'json') h.set('access-control-allow-origin', '*');   // 다른 사이트에서 사전을 불러갈 수 있게
         return new Response(request.method === 'HEAD' ? null : r.body, { status: 200, headers: h });
       } catch (e) {}
     }
