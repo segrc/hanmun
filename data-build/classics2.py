@@ -29,7 +29,8 @@ pairs=[]
 for L in lines:
     for i in range(len(L)-1):
         j=L[i]+L[i+1]
-        if len(j)<=12 and min(len(L[i]),len(L[i+1]))<=2: pairs.append(j)   # 한쪽 구가 1~2자일 때만
+        if L[i][-1] in '曰云' or L[i+1][-1] in '曰云': continue   # 'OO曰' 앞뒤로는 말이 갈리므로 붙이지 않는다 (王曰+叟 ×, 書+曰 ×)
+        if len(j)<=12 and min(len(L[i]),len(L[i+1]))<=2: pairs.append(j)   # 한쪽 구가 1~2자일 때만, 한 문장 안에서
 print('pairs',len(pairs))
 GW={}; order=[]; seen=set(); miss=0
 for s in ls+ms+pairs:
@@ -38,7 +39,7 @@ for s in ls+ms+pairs:
     if not rs: miss+=1; continue
     for h in rs: GW.setdefault(h,[]).append(s)
 print('clauses',len(seen),'keys',len(GW),'unreadable',miss)
-for t in ['학이시습지','불역열호','불역락호','왕하필왈리','역유인의이이의','인자요산','온고이지신','노인노','호연지기']: print(t,GW.get(t))
+for t in ['왕왈수','수불원천리이래','역유인의이이의왕왈','학이시습지','불역열호','불역락호','왕하필왈리','역유인의이이의','인자요산','온고이지신','노인노','호연지기']: print(t,GW.get(t))
 json.dump(GW,open('classics_words.json','w'),ensure_ascii=False,separators=(',',':'))
 # bigram/unigram merge (classics weighted x5)
 uni,ng=pickle.load(open('corpus.pkl','rb'))
